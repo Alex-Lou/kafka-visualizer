@@ -1,0 +1,1 @@
+-- Demo data removed - connections will be created via UI
