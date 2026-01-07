@@ -32,7 +32,11 @@ spring:
         format_sql: false
         show_sql: false
     open-in-view: false
-  
+
+  spring:
+    main:
+      allow-bean-definition-overriding=true:
+
   # Kafka Configuration (Optional - can be configured via UI)
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -57,3 +61,40 @@ app:
   kafka:
     message-retention-hours: 24
     max-messages-per-topic: 10000
+
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: Kafka Flow Visualizer
+    description: Visual Kafka communication monitoring tool
+    version: 1.0.0-SNAPSHOT
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

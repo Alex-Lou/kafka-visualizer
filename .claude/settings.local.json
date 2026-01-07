@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(mvn spring-boot:run:*)",
+      "Bash(mvn clean:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill /PID 29064 /F)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(dir:*)",
+      "Bash(docker logs:*)",
+      "Bash(timeout 3 bash:*)",
+      "Bash(timeout 15 bash -c \"while true; do curl -s http://localhost:8080/api/topics/connection/1 | grep -o ''\"\"messageCount\"\":[0-9]*'' | head -1; sleep 2; done\")",
+      "Bash(docker exec:*)",
+      "Bash(mysql:*)",
+      "Bash(timeout 15 bash:*)",
+      "Bash(npm start)",
+      "Bash(timeout 30 bash:*)",
+      "Bash(timeout 5 bash:*)",
+      "Bash(tasklist:*)",
+      "Bash(cmd //c \"start /B java -jar target/kafka-visualizer-1.0.0-SNAPSHOT.jar\")",
+      "Bash(git init:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
