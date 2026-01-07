@@ -22,7 +22,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
-import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -104,7 +103,7 @@ public class KafkaConsumerManager {
             props.put(ConsumerConfig.GROUP_ID_CONFIG, "kafka-visualizer-" + topic.getId());
             props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
             props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-            props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"); // Read from beginning
+            props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest"); // Changed to latest for real-time
             props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
             props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000");
             props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "100");
@@ -139,30 +138,46 @@ public class KafkaConsumerManager {
                         // Convert headers to map
                         Map<String, String> headers = new HashMap<>();
                         record.headers().forEach(header ->
-                            headers.put(header.key(), new String(header.value()))
+                                headers.put(header.key(), new String(header.value()))
                         );
 
                         // Save message to database
                         var messageResponse = topicService.saveMessage(
-                            topic.getId(),
-                            KafkaMessage.MessageDirection.INBOUND,
-                            record.key(),
-                            record.value(),
-                            record.partition(),
-                            record.offset(),
-                            headers
+                                topic.getId(),
+                                KafkaMessage.MessageDirection.INBOUND,
+                                record.key(),
+                                record.value(),
+                                record.partition(),
+                                record.offset(),
+                                headers
                         );
 
                         // Broadcast new message via WebSocket for real-time updates
                         try {
                             webSocketService.broadcastNewMessage(messageResponse);
-                            log.debug("Broadcasted message from topic {} via WebSocket", topic.getName());
                         } catch (Exception wsError) {
                             log.warn("Failed to broadcast message via WebSocket", wsError);
                         }
 
-                        log.debug("Saved message from topic {} partition {} offset {}",
-                            topic.getName(), record.partition(), record.offset());
+                        // ========================================================
+                        // NEW: Broadcast topic update for real-time count updates
+                        // ========================================================
+                        try {
+                            // Get updated topic from DB to get accurate count
+                            KafkaTopic updatedTopic = topicRepository.findById(topic.getId()).orElse(null);
+                            if (updatedTopic != null) {
+                                webSocketService.broadcastTopicUpdate(
+                                        updatedTopic.getId(),
+                                        updatedTopic.getName(),
+                                        updatedTopic.getMessageCount()
+                                );
+                            }
+                        } catch (Exception topicError) {
+                            log.warn("Failed to broadcast topic update via WebSocket", topicError);
+                        }
+
+                        log.debug("Saved and broadcasted message from topic {} partition {} offset {}",
+                                topic.getName(), record.partition(), record.offset());
 
                     } catch (Exception e) {
                         log.error("Error saving message from topic: {}", topic.getName(), e);

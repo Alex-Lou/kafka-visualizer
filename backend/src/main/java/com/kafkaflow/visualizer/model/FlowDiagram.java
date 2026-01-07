@@ -24,7 +24,7 @@ public class FlowDiagram {
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "connection_id", nullable = false)
+    @JoinColumn(name = "connection_id", nullable = true)
     private KafkaConnection connection;
 
     @Column(columnDefinition = "LONGTEXT")

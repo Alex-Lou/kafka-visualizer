@@ -7,9 +7,11 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "kafka_messages", indexes = {
-    @Index(name = "idx_message_topic", columnList = "topic_id"),
-    @Index(name = "idx_message_timestamp", columnList = "timestamp"),
-    @Index(name = "idx_message_key", columnList = "message_key")
+        @Index(name = "idx_message_topic", columnList = "topic_id"),
+        @Index(name = "idx_message_timestamp", columnList = "timestamp"),
+        @Index(name = "idx_message_key", columnList = "message_key"),
+        @Index(name = "idx_message_type", columnList = "message_type"),
+        @Index(name = "idx_message_bookmarked", columnList = "is_bookmarked")
 })
 @Data
 @NoArgsConstructor
@@ -54,6 +56,27 @@ public class KafkaMessage {
 
     private LocalDateTime createdAt;
 
+    // ==================== NEW FIELDS FOR RETENTION ====================
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "message_type")
+    @Builder.Default
+    private MessageType messageType = MessageType.NORMAL;
+
+    @Column(name = "content_type", length = 100)
+    @Builder.Default
+    private String contentType = "unknown";
+
+    @Column(name = "value_size")
+    @Builder.Default
+    private Integer valueSize = 0;
+
+    @Column(name = "is_bookmarked")
+    @Builder.Default
+    private Boolean isBookmarked = false;
+
+    // ==================================================================
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -63,6 +86,66 @@ public class KafkaMessage {
         if (status == null) {
             status = MessageStatus.RECEIVED;
         }
+        if (messageType == null) {
+            messageType = MessageType.NORMAL;
+        }
+        // Calculate value size
+        if (value != null && valueSize == null) {
+            valueSize = value.length();
+        }
+        // Detect content type
+        if (contentType == null || "unknown".equals(contentType)) {
+            contentType = detectContentType(value);
+        }
+        // Auto-detect message type from content
+        if (messageType == MessageType.NORMAL && value != null) {
+            messageType = detectMessageType(value);
+        }
+    }
+
+    // Detect content type based on value
+    private String detectContentType(String value) {
+        if (value == null || value.isEmpty()) {
+            return "empty";
+        }
+        String trimmed = value.trim();
+        if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+            return "application/json";
+        }
+        if (trimmed.startsWith("<")) {
+            return "application/xml";
+        }
+        if (trimmed.contains(",") && trimmed.contains("\n")) {
+            return "text/csv";
+        }
+        return "text/plain";
+    }
+
+    // Detect message type (error, warning, etc.)
+    private MessageType detectMessageType(String value) {
+        if (value == null) return MessageType.NORMAL;
+        String lower = value.toLowerCase();
+
+        // Check for error indicators
+        if (lower.contains("\"error\"") || lower.contains("\"exception\"") ||
+                lower.contains("\"stacktrace\"") || lower.contains("\"status\":500") ||
+                lower.contains("\"status\":\"error\"") || lower.contains("failed")) {
+            return MessageType.ERROR;
+        }
+
+        // Check for warning indicators
+        if (lower.contains("\"warning\"") || lower.contains("\"warn\"") ||
+                lower.contains("\"status\":\"warning\"")) {
+            return MessageType.WARNING;
+        }
+
+        // Check for system messages
+        if (lower.contains("\"type\":\"system\"") || lower.contains("heartbeat") ||
+                lower.contains("\"ping\"") || lower.contains("\"health\"")) {
+            return MessageType.SYSTEM;
+        }
+
+        return MessageType.NORMAL;
     }
 
     public enum MessageDirection {
@@ -71,5 +154,22 @@ public class KafkaMessage {
 
     public enum MessageStatus {
         RECEIVED, PROCESSED, ERROR, PENDING
+    }
+
+    public enum MessageType {
+        NORMAL, ERROR, WARNING, SYSTEM
+    }
+
+    // Helper method to get headers as Map (for archive conversion)
+    public java.util.Map<String, String> getHeadersAsMap() {
+        if (headers == null || headers.isEmpty()) {
+            return null;
+        }
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            return mapper.readValue(headers, new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {});
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

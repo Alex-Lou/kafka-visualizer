@@ -59,4 +59,56 @@ export const dashboardApi = {
   getStats: () => api.get('/dashboard/stats'),
 };
 
+// Health endpoints
+export const healthApi = {
+  getHealth: () => api.get('/health'),
+  getSimpleHealth: () => api.get('/health/simple'),
+};
+
+export const flowApi = {
+  getAll: () => api.get('/flows'),
+  getById: (id) => api.get(`/flows/${id}`),
+  getByConnection: (connectionId) => api.get(`/flows/connection/${connectionId}`),
+  create: (data) => api.post('/flows', data),
+  update: (id, data) => api.put(`/flows/${id}`, data),
+  updateLayout: (id, data) => api.put(`/flows/${id}/layout`, data),
+  delete: (id) => api.delete(`/flows/${id}`),
+};
+
+// Retention endpoints
+export const retentionApi = {
+  // Policies
+  getPolicies: () => api.get('/retention/policies'),
+  getGlobalPolicy: () => api.get('/retention/policies/global'),
+  getTopicPolicy: (topicId) => api.get(`/retention/policies/topic/${topicId}`),
+  createPolicy: (data) => api.post('/retention/policies', data),
+  updatePolicy: (id, data) => api.put(`/retention/policies/${id}`, data),
+  deletePolicy: (id) => api.delete(`/retention/policies/${id}`),
+
+  // Storage
+  getGlobalStorage: () => api.get('/retention/storage'),
+  getTopicStorage: (topicId) => api.get(`/retention/storage/topic/${topicId}`),
+
+  // Archives
+  getArchives: (params) => api.get('/retention/archives', { params }),
+  getArchive: (id) => api.get(`/retention/archives/${id}`),
+
+  // Stats
+  getTopicStats: (topicId, hours = 24) => api.get(`/retention/stats/topic/${topicId}`, { params: { hours } }),
+  getDashboardStats: () => api.get('/retention/stats/dashboard'),
+
+  // Actions
+  triggerArchive: () => api.post('/retention/actions/archive'),
+  triggerPurge: () => api.post('/retention/actions/purge'),
+  triggerStatsAggregation: () => api.post('/retention/actions/aggregate-stats'),
+  resetTopic: (topicId, data) => api.post(`/retention/actions/reset-topic/${topicId}`, data),
+  archiveTopic: (topicId) => api.post(`/retention/actions/archive-topic/${topicId}`),
+  bookmarkMessage: (messageId, bookmarked) => api.post(`/retention/messages/${messageId}/bookmark`, {}, { params: { bookmarked } }),
+
+  // Job logs
+  getJobLogs: (params) => api.get('/retention/jobs', { params }),
+  getJobStats: () => api.get('/retention/jobs/stats'),
+};
+
+
 export default api;

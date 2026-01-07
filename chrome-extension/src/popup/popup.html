@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kafka Flow Visualizer</title>
+  <link rel="stylesheet" href="../../styles/popup.css">
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+        <span class="logo-text">KafkaFlow</span>
+      </div>
+      <div id="connection-status" class="status-dot disconnected"></div>
+    </header>
+
+    <main class="content">
+      <!-- Connection Section -->
+      <section class="section">
+        <h3 class="section-title">Connection</h3>
+        <div class="connection-card" id="connection-card">
+          <div class="connection-info">
+            <span class="connection-name" id="connection-name">Not connected</span>
+            <span class="connection-url" id="connection-url">-</span>
+          </div>
+          <button class="btn btn-sm" id="connect-btn">Connect</button>
+        </div>
+      </section>
+
+      <!-- Quick Stats -->
+      <section class="section">
+        <h3 class="section-title">Quick Stats</h3>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-value" id="stat-topics">0</span>
+            <span class="stat-label">Topics</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="stat-messages">0</span>
+            <span class="stat-label">Messages/min</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Monitored Topics -->
+      <section class="section">
+        <h3 class="section-title">Monitored Topics</h3>
+        <ul class="topic-list" id="topic-list">
+          <li class="topic-item empty">No topics monitored</li>
+        </ul>
+      </section>
+
+      <!-- Recent Activity -->
+      <section class="section">
+        <h3 class="section-title">Recent Activity</h3>
+        <ul class="activity-list" id="activity-list">
+          <li class="activity-item empty">No recent activity</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <a href="#" id="open-app-link" class="footer-link">Open Full App</a>
+      <a href="#" id="settings-link" class="footer-link">Settings</a>
+    </footer>
+  </div>
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

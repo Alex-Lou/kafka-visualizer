@@ -4,3 +4,4 @@ export { default as TopicsPage } from './TopicsPage';
 export { default as MessagesPage } from './MessagesPage';
 export { default as FlowPage } from './FlowPage';
 export { default as SettingsPage } from './SettingsPage';
+export { default as AnalyticsPage } from './AnalyticsPage';

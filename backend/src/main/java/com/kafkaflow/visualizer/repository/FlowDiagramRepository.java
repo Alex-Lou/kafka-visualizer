@@ -2,6 +2,7 @@ package com.kafkaflow.visualizer.repository;
 
 import com.kafkaflow.visualizer.model.FlowDiagram;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -14,4 +15,10 @@ public interface FlowDiagramRepository extends JpaRepository<FlowDiagram, Long> 
     List<FlowDiagram> findByLiveModeTrue();
 
     List<FlowDiagram> findAllByOrderByUpdatedAtDesc();
+
+    @Query("SELECT f FROM FlowDiagram f WHERE f.connection IS NULL ORDER BY f.updatedAt DESC")
+    List<FlowDiagram> findGlobalFlows();
+
+    @Query("SELECT f FROM FlowDiagram f LEFT JOIN FETCH f.connection ORDER BY f.updatedAt DESC")
+    List<FlowDiagram> findAllWithConnection();
 }

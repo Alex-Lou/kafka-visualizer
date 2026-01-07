@@ -42,6 +42,52 @@ export const DASHBOARD = {
   TOPIC_NAME: 'flex-1 font-medium text-surface-900 dark:text-white truncate',
   TOPIC_COUNT: 'text-sm text-surface-500 dark:text-surface-400',
   TOPIC_BADGE: 'ml-2',
+
+  // Health section
+  HEALTH_SECTION: 'mb-6',
+  HEALTH_GRID: 'grid grid-cols-1 lg:grid-cols-3 gap-4',
+  
+  HEALTH_CARD: 'bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-5',
+  HEALTH_CARD_HEADER: 'flex items-center justify-between mb-4',
+  HEALTH_CARD_TITLE: 'text-sm font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider',
+  HEALTH_CARD_BODY: 'space-y-3',
+  
+  HEALTH_STATUS_ROW: 'flex items-center justify-between',
+  HEALTH_STATUS_LABEL: 'text-sm text-surface-600 dark:text-surface-400',
+  HEALTH_STATUS_VALUE: 'text-sm font-medium text-surface-900 dark:text-white',
+  
+  HEALTH_STATUS_BADGE: 'px-2.5 py-1 rounded-full text-xs font-semibold',
+  HEALTH_STATUS_UP: 'bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-400',
+  HEALTH_STATUS_DOWN: 'bg-error-100 dark:bg-error-900/30 text-error-700 dark:text-error-400',
+  HEALTH_STATUS_DEGRADED: 'bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-400',
+  
+  HEALTH_METRIC_CARD: 'bg-surface-50 dark:bg-surface-800 rounded-xl p-4',
+  HEALTH_METRIC_LABEL: 'text-xs text-surface-500 dark:text-surface-400 mb-1',
+  HEALTH_METRIC_VALUE: 'text-xl font-semibold text-surface-900 dark:text-white',
+  HEALTH_METRIC_UNIT: 'text-sm font-normal text-surface-500 dark:text-surface-400 ml-1',
+  
+  // System overview card
+  SYSTEM_CARD: 'bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-5 mb-6',
+  SYSTEM_HEADER: 'flex items-center justify-between mb-4',
+  SYSTEM_TITLE: 'text-lg font-semibold text-surface-900 dark:text-white',
+  SYSTEM_GRID: 'grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4',
+  
+  SYSTEM_METRIC: 'text-center',
+  SYSTEM_METRIC_VALUE: 'text-2xl font-bold text-surface-900 dark:text-white',
+  SYSTEM_METRIC_LABEL: 'text-xs text-surface-500 dark:text-surface-400 mt-1',
+  
+  // Memory bar
+  MEMORY_BAR_CONTAINER: 'mt-2',
+  MEMORY_BAR_LABEL: 'flex items-center justify-between text-xs text-surface-500 dark:text-surface-400 mb-1',
+  MEMORY_BAR_BG: 'h-2 bg-surface-200 dark:bg-surface-700 rounded-full overflow-hidden',
+  MEMORY_BAR_FILL: 'h-full rounded-full transition-all duration-500',
+  MEMORY_BAR_OK: 'bg-success-500',
+  MEMORY_BAR_WARNING: 'bg-warning-500',
+  MEMORY_BAR_DANGER: 'bg-error-500',
+
+  // Auto refresh indicator
+  REFRESH_INDICATOR: 'flex items-center gap-2 text-xs text-surface-500 dark:text-surface-400',
+  REFRESH_DOT: 'w-2 h-2 rounded-full bg-success-500 animate-pulse',
 }
 
 export const DASHBOARD_COLORS = {

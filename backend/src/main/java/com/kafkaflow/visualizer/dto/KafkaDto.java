@@ -226,4 +226,29 @@ public class KafkaDto {
                     .build();
         }
     }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class HealthStatus {
+        private String status;  // UP, DOWN, DEGRADED
+        private LocalDateTime timestamp;
+        private String uptime;
+        private String version;
+        private ComponentHealth database;
+        private ComponentHealth kafka;
+        private ComponentHealth consumers;
+        private Map<String, Object> metrics;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ComponentHealth {
+        private String status;  // UP, DOWN, DEGRADED
+        private String message;
+        private Map<String, Object> details;
+    }
 }
