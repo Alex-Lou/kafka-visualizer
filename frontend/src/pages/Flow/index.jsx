@@ -89,13 +89,32 @@ export default function FlowPage() {
     else addNotification({ type: 'info', title: 'Nothing to redo' });
   };
 
-  const handleAutoGenerate = () => {
-    const result = autoGenerate(topics, connections, liveMode);
+  const handleAutoGenerate = (selectedConnectionIds) => {
+    // Filtrer uniquement les connexions sélectionnées par l'utilisateur
+    const selectedConnections = connections.filter(c => 
+      selectedConnectionIds.includes(c.id)
+    );
+    
+    // Filtrer les topics appartenant aux connexions sélectionnées
+    const selectedTopics = topics.filter(t => 
+      selectedConnectionIds.includes(t.connectionId)
+    );
+    
+    const result = autoGenerate(selectedTopics, selectedConnections, liveMode);
+    
     if (result.success) {
       setShowAutoGenerate(false);
-      addNotification({ type: 'success', title: 'Flow generated', message: `Created ${result.nodesCount} nodes and ${result.edgesCount} connections` });
+      addNotification({ 
+        type: 'success', 
+        title: 'Flow generated', 
+        message: `Created ${result.nodesCount} nodes and ${result.edgesCount} connections` 
+      });
     } else {
-      addNotification({ type: 'warning', title: 'Cannot generate', message: result.message });
+      addNotification({ 
+        type: 'warning', 
+        title: 'Cannot generate', 
+        message: result.message 
+      });
     }
   };
 
