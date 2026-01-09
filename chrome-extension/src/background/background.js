@@ -2,7 +2,7 @@ const API_URL = 'http://localhost:8080/api';
 let ws = null;
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Kafka Flow Visualizer extension installed');
+  console.log('Yucast extension installed');
   chrome.alarms.create('checkConnection', { periodInMinutes: 1 });
 });
 
@@ -51,7 +51,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'notify') {
     chrome.notifications.create({
       type: 'basic',
-      iconUrl: '../icons/icon128.png',
+      iconUrl: 'icons/icon128.png',
       title: request.title || 'Kafka Flow',
       message: request.message,
     });

@@ -1,21 +1,175 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
-    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
-    <root level="INFO">
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         PROPRIÉTÉS
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <property name="LOG_DIR" value="logs"/>
+    <property name="APP_NAME" value="yucast"/>
+
+    <!-- Pattern console - compact et lisible -->
+    <property name="CONSOLE_PATTERN" value="%d{HH:mm:ss} %highlight(%-5level) %cyan(%-30.30logger{0}) : %msg%n"/>
+
+    <!-- Pattern fichier - plus détaillé -->
+    <property name="FILE_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %-40.40logger{39} : %msg%n"/>
+
+    <!-- Pattern erreurs - avec stacktrace -->
+    <property name="ERROR_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{39}%n%msg%n%ex%n"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         APPENDERS
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Console - logs du quotidien -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- Fichier principal - tous les logs INFO+ -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/${APP_NAME}.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/${APP_NAME}.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>100MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- Fichier erreurs - uniquement ERROR avec stacktrace complète -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/${APP_NAME}-errors.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/${APP_NAME}-errors.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>200MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${ERROR_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         LOGGERS - APPLICATION
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Notre application - INFO -->
+    <logger name="com.kafkaflow.visualizer" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="ERROR_FILE"/>
+    </logger>
+
+    <!-- Services Kafka - INFO (nos logs custom) -->
+    <logger name="com.kafkaflow.visualizer.service.kafka" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="ERROR_FILE"/>
+    </logger>
+
+    <!-- WebSocket - WARN seulement -->
+    <logger name="com.kafkaflow.visualizer.websocket" level="WARN" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         LOGGERS - SPRING (Silencieux)
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Tomcat startup - on garde juste le port -->
+    <logger name="org.springframework.boot.web.embedded.tomcat.TomcatWebServer" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Spring core - ERROR seulement -->
+    <logger name="org.springframework" level="ERROR"/>
+    <logger name="org.springframework.web" level="ERROR"/>
+    <logger name="org.springframework.boot" level="ERROR"/>
+    <logger name="org.springframework.data" level="ERROR"/>
+    <logger name="org.springframework.orm" level="ERROR"/>
+    <logger name="org.springframework.jpa" level="ERROR"/>
+    <logger name="org.springframework.transaction" level="ERROR"/>
+    <logger name="org.springframework.security" level="ERROR"/>
+    <logger name="org.springframework.messaging" level="ERROR"/>
+    <logger name="org.springframework.context" level="ERROR"/>
+    <logger name="org.springframework.beans" level="ERROR"/>
+
+    <!-- Spring autoconfigure - OFF (très bruyant) -->
+    <logger name="org.springframework.boot.autoconfigure" level="OFF"/>
+    <logger name="org.springframework.boot.devtools" level="OFF"/>
+    <logger name="org.springframework.boot.actuate" level="OFF"/>
+    <logger name="org.springframework.core.env" level="OFF"/>
+    <logger name="org.springframework.jmx" level="OFF"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         LOGGERS - HIBERNATE / JPA (Silencieux)
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <logger name="org.hibernate" level="ERROR"/>
+    <logger name="org.hibernate.SQL" level="OFF"/>
+    <logger name="org.hibernate.type" level="OFF"/>
+    <logger name="org.hibernate.stat" level="OFF"/>
+    <logger name="org.hibernate.engine" level="OFF"/>
+    <logger name="org.hibernate.cache" level="OFF"/>
+    <logger name="org.hibernate.validator" level="ERROR"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         LOGGERS - KAFKA (Silencieux sauf erreurs critiques)
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <logger name="org.apache.kafka" level="ERROR"/>
+    <logger name="org.apache.kafka.clients" level="ERROR"/>
+    <logger name="org.apache.kafka.clients.consumer" level="ERROR"/>
+    <logger name="org.apache.kafka.clients.producer" level="ERROR"/>
+    <logger name="org.apache.kafka.common" level="ERROR"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         LOGGERS - SERVEUR (Silencieux)
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <logger name="org.apache.catalina" level="ERROR"/>
+    <logger name="org.apache.tomcat" level="ERROR"/>
+    <logger name="org.apache.coyote" level="ERROR"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         LOGGERS - AUTRES LIBS (Silencieux)
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <logger name="com.zaxxer.hikari" level="ERROR"/>
+    <logger name="com.fasterxml.jackson" level="ERROR"/>
+    <logger name="io.lettuce" level="ERROR"/>
+    <logger name="io.netty" level="ERROR"/>
+    <logger name="reactor" level="ERROR"/>
+    <logger name="org.jboss.logging" level="ERROR"/>
+    <logger name="com.mysql" level="ERROR"/>
+    <logger name="javax.management" level="OFF"/>
+    <logger name="sun.rmi" level="OFF"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         ROOT LOGGER
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <root level="WARN">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="ERROR_FILE"/>
     </root>
 
-    <!-- Application logs -->
-    <logger name="com.kafkaflow.visualizer" level="INFO"/>
-
-    <!-- Reduce Spring Framework noise -->
-    <logger name="org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver" level="ERROR"/>
-    <logger name="org.springframework.web.servlet.resource" level="ERROR"/>
-    <logger name="org.hibernate.SQL" level="ERROR"/>
-    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="ERROR"/>
-
-    <!-- Kafka logs -->
-    <logger name="org.apache.kafka" level="WARN"/>
 </configuration>

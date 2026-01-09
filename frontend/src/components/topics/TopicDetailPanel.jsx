@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, MessageSquare, Activity, Clock, Database, Edit3, Trash2, Save, Palette } from 'lucide-react';
 import { Button, Badge } from '@components/common';
-import { useTopicStore } from '@context/store';
+import { useTopicStore } from '@context/store/index';
 import { topicApi } from '@services/api';
 
 // Predefined colors for topics

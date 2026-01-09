@@ -1,63 +1,126 @@
 import { Handle, Position } from 'reactflow';
-import { MessageSquare, Zap } from 'lucide-react';
+import { MessageSquare, Zap, AlertCircle, Loader2 } from 'lucide-react';
+import { STATUS, STATUS_COLORS, NODE_STATUS_CONFIG } from '../constants';
+import { FLOW } from '@constants/styles/flow';
 
 export default function TopicNode({ id, data, selected }) {
-  const isActive = (data.messageCount || 0) > 0 || data.throughput > 0;
+  // Auto-detect status based on message activity
+  const determineStatus = () => {
+    // Si un statut est explicitement fourni, l'utiliser
+    if (data.status) return data.status;
+    
+    // Sinon, déterminer automatiquement
+    const hasMessages = (data.messageCount || 0) > 0;
+    const hasThroughput = (data.throughput || 0) > 0;
+    
+    if (hasMessages || hasThroughput) {
+      return STATUS.ACTIVE;
+    }
+    return STATUS.INACTIVE;
+  };
+  
+  const status = determineStatus();
+  const statusColor = STATUS_COLORS[status];
+  const isActive = status === STATUS.ACTIVE;
+  
+  const StatusIcon = () => {
+    switch (status) {
+      case STATUS.ERROR:
+        return <AlertCircle className={FLOW.STATUS_ICON_ERROR} />;
+      case STATUS.WARNING:
+        return <AlertCircle className={FLOW.STATUS_ICON_WARNING} />;
+      case STATUS.CONNECTING:
+        return <Loader2 className={FLOW.STATUS_ICON_CONNECTING} />;
+      case STATUS.INACTIVE:
+        return <div className="w-2 h-2 bg-surface-400 rounded-full opacity-50" />;
+      default:
+        return <div className={`w-2 h-2 ${FLOW.NODE_BADGE_DOT_SUCCESS} rounded-full animate-pulse`} />;
+    }
+  };
+  
+  const getNodeClasses = () => {
+    if (selected) {
+      return `${FLOW.NODE_BASE} ${FLOW.NODE_BG_ACCENT} ${FLOW.NODE_BORDER_ACCENT} ${FLOW.NODE_SELECTED} ${FLOW.NODE_SHADOW_ACCENT}`;
+    }
+    if (status === STATUS.ERROR || status === STATUS.WARNING || status === STATUS.CONNECTING) {
+      const config = NODE_STATUS_CONFIG[status];
+      return `${FLOW.NODE_BASE} ${config.bgColor} ${config.borderColor} ${FLOW.NODE_SELECTED} ${config.shadowColor}`;
+    }
+    if (status === STATUS.INACTIVE) {
+      return `${FLOW.NODE_BASE} ${FLOW.NODE_BG_SURFACE} ${FLOW.NODE_BORDER_SURFACE} shadow-md opacity-60 ${FLOW.NODE_HOVER}`;
+    }
+    // ACTIVE
+    return `${FLOW.NODE_BASE} ${FLOW.NODE_BG_ACCENT_LIGHT} ${FLOW.NODE_BORDER_ACCENT_ALT} shadow-md ${FLOW.NODE_HOVER}`;
+  };
+  
+  const getIconClasses = () => {
+    if (selected) return `${FLOW.NODE_ICON_BASE} ${FLOW.NODE_ICON_BG_ACCENT_SELECTED}`;
+    if (status === STATUS.ERROR || status === STATUS.WARNING || status === STATUS.CONNECTING) {
+      const config = NODE_STATUS_CONFIG[status];
+      return `${FLOW.NODE_ICON_BASE} ${config.iconBgColor} text-white`;
+    }
+    if (status === STATUS.INACTIVE) {
+      return `${FLOW.NODE_ICON_BASE} ${FLOW.NODE_ICON_BG_ACCENT_INACTIVE}`;
+    }
+    // ACTIVE
+    return `${FLOW.NODE_ICON_BASE} ${FLOW.NODE_ICON_BG_ACCENT}`;
+  };
   
   return (
-    <div
-      className={`px-4 py-3 rounded-2xl border-2 min-w-[150px] transition-all duration-200 relative ${
-        selected
-          ? 'bg-accent-50 dark:bg-accent-900/40 border-accent-500 shadow-lg shadow-accent-500/30'
-          : isActive
-            ? 'bg-accent-50/50 dark:bg-accent-900/20 border-accent-400 dark:border-accent-600 shadow-md hover:shadow-lg'
-            : 'bg-surface-50 dark:bg-surface-800 border-surface-300 dark:border-surface-600 shadow-md hover:shadow-lg'
-      }`}
-    >
-      {/* Connection Handles */}
+    <div className={getNodeClasses()}>
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !bg-accent-500 !border-2 !border-white dark:!border-surface-800"
+        className={FLOW.HANDLE_BASE}
+        style={{ backgroundColor: statusColor }}
       />
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-3 !h-3 !bg-accent-500 !border-2 !border-white dark:!border-surface-800"
+        className={FLOW.HANDLE_BASE}
+        style={{ backgroundColor: statusColor }}
       />
       
-      <div className="flex items-center gap-3">
+      <div className={FLOW.NODE_CONTENT}>
         <div
-          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-            selected
-              ? 'bg-accent-500 text-white'
-              : isActive
-                ? 'bg-accent-200 dark:bg-accent-800 text-accent-600 dark:text-accent-400'
-                : 'bg-surface-200 dark:bg-surface-700 text-surface-500'
-          }`}
-          style={data.color ? { backgroundColor: data.color + '20', color: data.color } : {}}
+          className={getIconClasses()}
+          style={data.color && status === STATUS.ACTIVE ? { backgroundColor: data.color + '20', color: data.color } : {}}
         >
-          <MessageSquare className="w-5 h-5" />
+          <MessageSquare className={FLOW.ICON_LG} />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-surface-900 dark:text-white truncate">
-            {data.label}
-          </div>
-          <div className="text-xs text-surface-500 dark:text-surface-400">
-            {data.messageCount?.toLocaleString() || 0} msgs
+        <div className={FLOW.NODE_TEXT_CONTAINER}>
+          <div className={FLOW.NODE_LABEL}>{data.label}</div>
+          <div className={status === STATUS.INACTIVE ? 'text-xs text-surface-400 italic' : FLOW.NODE_SUBLABEL}>
+            {status === STATUS.INACTIVE ? 'No messages' : `${data.messageCount?.toLocaleString() || 0} msgs`}
           </div>
         </div>
       </div>
+      
       {data.throughput !== undefined && data.throughput > 0 && (
-        <div className="mt-2 pt-2 border-t border-accent-200 dark:border-accent-800">
-          <div className="flex items-center gap-1 text-xs text-accent-600 dark:text-accent-400">
-            <Zap className="w-3 h-3" />
+        <div className={`${FLOW.NODE_METRICS} ${FLOW.NODE_METRICS_BORDER_ACCENT}`}>
+          <div className={`${FLOW.NODE_METRICS_ROW} ${FLOW.NODE_METRICS_TEXT_ACCENT}`}>
+            <Zap className={FLOW.ICON_SM} />
             <span className="font-medium">{data.throughput}/s</span>
           </div>
         </div>
       )}
-      {data.monitored && (
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-success-500 rounded-full border-2 border-white dark:border-surface-800" />
+      
+      <div className={FLOW.NODE_BADGE_CONTAINER}>
+        {status === STATUS.ACTIVE && data.monitored && (
+          <div className={`${FLOW.NODE_BADGE_DOT} ${FLOW.NODE_BADGE_DOT_SUCCESS}`} />
+        )}
+        {(status === STATUS.ERROR || status === STATUS.WARNING || status === STATUS.CONNECTING) && <StatusIcon />}
+      </div>
+      
+      {status !== STATUS.ACTIVE && status !== STATUS.INACTIVE && (
+        <div className={FLOW.NODE_STATUS_LABEL}>
+          <div 
+            className={FLOW.NODE_STATUS_LABEL_INNER}
+            style={{ backgroundColor: statusColor }}
+          >
+            {status.toUpperCase()}
+          </div>
+        </div>
       )}
     </div>
   );

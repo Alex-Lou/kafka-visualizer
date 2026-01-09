@@ -69,7 +69,7 @@ public class KafkaTopicController {
             @RequestParam(required = false) String valueContains,
             @RequestParam(required = false) LocalDateTime fromDate,
             @RequestParam(required = false) LocalDateTime toDate) {
-        
+
         MessageFilter filter = MessageFilter.builder()
                 .topicId(topicId)
                 .key(key)

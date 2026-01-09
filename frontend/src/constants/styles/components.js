@@ -26,7 +26,7 @@ export const BUTTONS = {
 
 export const INPUTS = {
   // Base
-  BASE: 'w-full px-4 py-2.5 rounded-xl bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-surface-100 placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all duration-200',
+  BASE: 'w-full px-4 py-2.5 rounded-xl bg-black border border-surface-200 dark:border-surface-700 text-white placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all duration-200',
   
   // States
   ERROR: 'border-error-500 focus:ring-error-500/50 focus:border-error-500',

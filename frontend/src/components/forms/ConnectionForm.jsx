@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@components/common';
 import { INPUTS } from '@constants/styles/components';
-import { useConnectionStore, useUIStore } from '@context/store';
+import { useConnectionStore, useUIStore } from '@context/store/index';
 
 export default function ConnectionForm({ connection, onClose }) {
   const { createConnection, updateConnection } = useConnectionStore();
@@ -71,7 +71,7 @@ export default function ConnectionForm({ connection, onClose }) {
           onChange={handleChange}
           required
           placeholder="My Kafka Cluster"
-          className={INPUTS.BASE}
+          className={`${INPUTS.BASE} bg-black text-white`}
         />
       </div>
 
@@ -87,7 +87,7 @@ export default function ConnectionForm({ connection, onClose }) {
           onChange={handleChange}
           required
           placeholder="localhost:9092"
-          className={INPUTS.BASE}
+          className={`${INPUTS.BASE} bg-black text-white`}
         />
         <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
           Format: host:port (e.g., localhost:9092)
@@ -105,7 +105,7 @@ export default function ConnectionForm({ connection, onClose }) {
           onChange={handleChange}
           rows={3}
           placeholder="Production cluster for order processing..."
-          className={INPUTS.BASE}
+          className={`${INPUTS.BASE} bg-black text-white`}
         />
       </div>
 

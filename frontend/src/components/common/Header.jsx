@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Bell, Search, Moon, Sun, RefreshCw } from 'lucide-react';
-import { useUIStore } from '@context/store';
+import { useUIStore } from '@context/store/index';
 import { LAYOUT } from '@constants/styles/layout';
 import { BUTTONS, INPUTS } from '@constants/styles/components';
 import NotificationPanel from './NotificationPanel';

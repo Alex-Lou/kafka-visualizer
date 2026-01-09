@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Sidebar, NotificationToast } from '@components/common';
 import { DashboardPage, ConnectionsPage, TopicsPage, MessagesPage, FlowPage, SettingsPage, AnalyticsPage } from '@pages';
-import { useUIStore, useConnectionStore, useTopicStore, initializeWebSocket, subscribeToWsStatus } from '@context/store';
+import { useUIStore, useConnectionStore, useTopicStore, initializeWebSocket, subscribeToWsStatus } from '@context/store/index';
 import { LAYOUT } from '@constants/styles/layout';
 
 export default function App() {
@@ -14,8 +14,7 @@ export default function App() {
   // Initialize app on mount
   useEffect(() => {
     const initApp = async () => {
-      console.log('[App] Initializing...');
-      
+
       // 1. Fetch initial data
       await fetchConnections();
       
@@ -26,7 +25,6 @@ export default function App() {
       await fetchAllTopics();
       
       setAppReady(true);
-      console.log('[App] Ready');
     };
 
     initApp();

@@ -126,8 +126,6 @@ public class KafkaConnectionService {
             connectionRepository.save(connection);
 
             log.info("Successfully connected to Kafka: {}", connection.getName());
-
-            // Auto-sync topics after successful connection
             autoSyncTopics(connection, topicNames);
 
         } catch (Exception e) {
@@ -141,11 +139,10 @@ public class KafkaConnectionService {
 
     private void autoSyncTopics(KafkaConnection connection, Set<String> topicNames) {
         try {
-            log.info("Auto-syncing {} topics for connection: {}", topicNames.size(), connection.getName());
+            log.debug("Auto-syncing {} topics for connection: {}", topicNames.size(), connection.getName());
 
             for (String topicName : topicNames) {
-                // Skip internal Kafka topics
-                if (topicName.startsWith("_") || topicName.startsWith("__")) {
+                if (topicName.startsWith("_")) {
                     continue;
                 }
 
@@ -153,19 +150,18 @@ public class KafkaConnectionService {
                     KafkaTopic topic = KafkaTopic.builder()
                             .name(topicName)
                             .connection(connection)
-                            .monitored(true)  // Auto-enable monitoring
+                            .monitored(true)
                             .messageCount(0L)
                             .build();
                     topicRepository.save(topic);
-                    log.info("Auto-created and monitoring topic: {}", topicName);
+                    log.debug("Auto-created and monitoring topic: {}", topicName);
                 } else {
-                    // Update existing topics to monitored=true
                     topicRepository.findByConnectionIdAndName(connection.getId(), topicName)
                             .ifPresent(topic -> {
                                 if (!topic.isMonitored()) {
                                     topic.setMonitored(true);
                                     topicRepository.save(topic);
-                                    log.info("Enabled monitoring for existing topic: {}", topicName);
+                                    log.debug("Enabled monitoring for existing topic: {}", topicName);
                                 }
                             });
                 }
@@ -234,4 +230,28 @@ public class KafkaConnectionService {
                 .topicCount(topicRepository.findByConnectionId(connection.getId()).size())
                 .build();
     }
+
+    @Transactional
+    public ConnectionResponse createErrorTestConnection() {
+        // Supprime l'ancienne connexion de test si elle existe
+        connectionRepository.findByName("Test Error Connection")
+                .ifPresent(conn -> {
+                    closeAdminClient(conn.getId());
+                    connectionRepository.delete(conn);
+                });
+
+        KafkaConnection connection = KafkaConnection.builder()
+                .name("Test Error Connection")
+                .bootstrapServers("localhost:19999") // Port invalide
+                .description("Test connection for error handling visualization")
+                .defaultConnection(false)
+                .status(ConnectionStatus.DISCONNECTED)
+                .build();
+
+        connection = connectionRepository.save(connection);
+
+        // Test automatiquement pour déclencher l'erreur
+        return testConnection(connection.getId());
+    }
+
 }

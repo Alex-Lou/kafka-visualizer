@@ -251,4 +251,36 @@ public class KafkaDto {
         private String message;
         private Map<String, Object> details;
     }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class TopicLiveStatsResponse {
+        private Long topicId;
+        private String topicName;
+
+        // Compteurs
+        private Long totalMessages;          // Total historique (depuis création)
+        private Long messagesLast24h;        // Messages des dernières 24h
+        private Long messagesLastHour;       // Messages de la dernière heure
+        private Long errorCount;             // Erreurs dernières 24h
+        private Long warningCount;           // Warnings dernières 24h
+
+        // Real-time
+        private Double throughputPerSecond;  // Messages/seconde (real-time)
+        private Double throughputPerMinute;  // Messages/minute (calculé)
+
+        // Storage
+        private Long totalSizeBytes;
+        private String totalSizeFormatted;
+
+        // Timestamps
+        private LocalDateTime lastMessageAt;
+        private LocalDateTime oldestMessageAt;
+
+        // Status
+        private Boolean isMonitored;
+        private Boolean consumerActive;
+    }
 }
