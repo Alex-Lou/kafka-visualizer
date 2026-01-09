@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -58,4 +59,39 @@ public interface KafkaMessageRepository extends JpaRepository<KafkaMessage, Long
     @Modifying
     @Query("DELETE FROM KafkaMessage m WHERE m.timestamp < :before")
     int deleteOlderThan(@Param("before") LocalDateTime before);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM KafkaMessage m WHERE m.topic.id = :topicId")
+    int deleteByTopicId(@Param("topicId") Long topicId);
+
+    long countByTopicIdAndTimestampBetween(Long topicId, LocalDateTime start, LocalDateTime end);
+
+    List<KafkaMessage> findByTopicIdAndTimestampBetween(Long topicId, LocalDateTime start, LocalDateTime end);
+
+    @Query("SELECT m FROM KafkaMessage m WHERE m.topic.id = :topicId AND m.timestamp < :before AND m.isBookmarked = false")
+    List<KafkaMessage> findMessagesOlderThan(@Param("topicId") Long topicId, @Param("before") LocalDateTime before, Pageable pageable);
+
+    // Compte les messages après une date
+    long countByTopicIdAndTimestampAfter(Long topicId, LocalDateTime timestamp);
+
+    // Compte les messages par type après une date
+    long countByTopicIdAndMessageTypeAndTimestampAfter(
+            Long topicId,
+            KafkaMessage.MessageType messageType,
+            LocalDateTime timestamp
+    );
+
+    // Taille totale des messages d'un topic
+    @Query("SELECT COALESCE(SUM(m.valueSize), 0) FROM KafkaMessage m WHERE m.topic.id = :topicId")
+    Long getTotalSizeByTopicId(@Param("topicId") Long topicId);
+
+    // Plus ancien message d'un topic
+    @Query("SELECT MIN(m.timestamp) FROM KafkaMessage m WHERE m.topic.id = :topicId")
+    LocalDateTime findOldestTimestampByTopicId(@Param("topicId") Long topicId);
+
+
+
 }
+
+

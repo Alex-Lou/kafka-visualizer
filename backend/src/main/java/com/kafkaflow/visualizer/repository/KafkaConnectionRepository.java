@@ -25,4 +25,5 @@ public interface KafkaConnectionRepository extends JpaRepository<KafkaConnection
 
     @Query("SELECT COUNT(c) FROM KafkaConnection c WHERE c.status = 'CONNECTED'")
     int countActiveConnections();
+
 }

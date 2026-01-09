@@ -41,6 +41,11 @@ public interface KafkaMessageArchiveRepository extends JpaRepository<KafkaMessag
     @Modifying
     @Query("DELETE FROM KafkaMessageArchive m WHERE m.archivedAt < :cutoff")
     int deleteExpiredArchives(@Param("cutoff") LocalDateTime cutoff);
+    
+    // Overloaded method for topic-specific deletion
+    @Modifying
+    @Query("DELETE FROM KafkaMessageArchive m WHERE m.topicId = :topicId AND m.archivedAt < :cutoff")
+    int deleteExpiredArchives(@Param("topicId") Long topicId, @Param("cutoff") LocalDateTime cutoff);
 
     @Modifying
     @Query("DELETE FROM KafkaMessageArchive m WHERE m.topicId = :topicId")

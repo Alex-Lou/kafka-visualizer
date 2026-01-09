@@ -106,15 +106,41 @@ export default {
         'glow': '0 0 20px rgba(51, 116, 255, 0.3)',
         'glow-accent': '0 0 20px rgba(4, 200, 174, 0.3)',
         'glow-secondary': '0 0 20px rgba(168, 85, 247, 0.3)',
+        'glow-error': '0 0 25px rgba(239, 68, 68, 0.4)',
+        'glow-warning': '0 0 25px rgba(245, 158, 11, 0.4)',
+        'glow-success': '0 0 25px rgba(34, 197, 94, 0.4)',
         'inner-glow': 'inset 0 0 20px rgba(51, 116, 255, 0.1)',
       },
       animation: {
+        // Existing animations
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'flow': 'flow 2s ease-in-out infinite',
         'shimmer': 'shimmer 2s linear infinite',
         'float': 'float 3s ease-in-out infinite',
+        
+        // New: Ping variations (slower)
+        'ping-slow': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+        'ping-slower': 'ping 3s cubic-bezier(0, 0, 0.2, 1) infinite',
+        
+        // New: Pulse variations (slower)
+        'pulse-slower': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        
+        // New: Wave animations for status indicators
+        'wave-error': 'wave-error 2.5s ease-in-out infinite',
+        'wave-warning': 'wave-warning 2s ease-in-out infinite',
+        'wave-success': 'wave-success 3s ease-in-out infinite',
+        'wave-connecting': 'wave-connecting 1.5s ease-in-out infinite',
+        
+        // New: Ripple effect (nice for errors)
+        'ripple': 'ripple 2s ease-out infinite',
+        'ripple-slow': 'ripple 3s ease-out infinite',
+        
+        // New: Glow pulse for nodes
+        'glow-pulse': 'glow-pulse 2.5s ease-in-out infinite',
+        'glow-pulse-error': 'glow-pulse-error 2s ease-in-out infinite',
       },
       keyframes: {
+        // Existing keyframes
         flow: {
           '0%, 100%': { transform: 'translateX(0)' },
           '50%': { transform: 'translateX(5px)' },
@@ -126,6 +152,78 @@ export default {
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-5px)' },
+        },
+        
+        // New: Wave keyframes for different statuses
+        'wave-error': {
+          '0%, 100%': { 
+            transform: 'scale(1)', 
+            opacity: '0.4',
+          },
+          '50%': { 
+            transform: 'scale(1.2)', 
+            opacity: '0.1',
+          },
+        },
+        'wave-warning': {
+          '0%, 100%': { 
+            transform: 'scale(1)', 
+            opacity: '0.35',
+          },
+          '50%': { 
+            transform: 'scale(1.15)', 
+            opacity: '0.1',
+          },
+        },
+        'wave-success': {
+          '0%, 100%': { 
+            transform: 'scale(1)', 
+            opacity: '0.25',
+          },
+          '50%': { 
+            transform: 'scale(1.1)', 
+            opacity: '0.05',
+          },
+        },
+        'wave-connecting': {
+          '0%, 100%': { 
+            transform: 'scale(1)', 
+            opacity: '0.5',
+          },
+          '50%': { 
+            transform: 'scale(1.1)', 
+            opacity: '0.2',
+          },
+        },
+        
+        // New: Ripple effect
+        'ripple': {
+          '0%': { 
+            transform: 'scale(0.8)', 
+            opacity: '0.5',
+          },
+          '100%': { 
+            transform: 'scale(1.5)', 
+            opacity: '0',
+          },
+        },
+        
+        // New: Glow pulse
+        'glow-pulse': {
+          '0%, 100%': { 
+            boxShadow: '0 0 15px rgba(51, 116, 255, 0.3)',
+          },
+          '50%': { 
+            boxShadow: '0 0 30px rgba(51, 116, 255, 0.6)',
+          },
+        },
+        'glow-pulse-error': {
+          '0%, 100%': { 
+            boxShadow: '0 0 15px rgba(239, 68, 68, 0.3)',
+          },
+          '50%': { 
+            boxShadow: '0 0 35px rgba(239, 68, 68, 0.6)',
+          },
         },
       },
       backgroundImage: {

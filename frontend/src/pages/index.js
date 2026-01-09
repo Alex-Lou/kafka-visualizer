@@ -1,7 +1,7 @@
-export { default as DashboardPage } from './DashboardPage';
+export { default as DashboardPage } from './Dashboard';
 export { default as ConnectionsPage } from './ConnectionsPage';
 export { default as TopicsPage } from './TopicsPage';
-export { default as MessagesPage } from './MessagesPage';
-export { default as FlowPage } from './FlowPage';
+export { default as MessagesPage } from './Messages';
+export { default as FlowPage } from './Flow';
 export { default as SettingsPage } from './SettingsPage';
 export { default as AnalyticsPage } from './AnalyticsPage';

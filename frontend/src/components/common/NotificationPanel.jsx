@@ -1,6 +1,6 @@
 import { X, Bell, CheckCircle, AlertCircle, Info, AlertTriangle, Trash2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { useUIStore } from '@context/store';
+import { useUIStore } from '@context/store/index';
 
 const icons = {
   success: CheckCircle,

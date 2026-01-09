@@ -14,7 +14,7 @@ class WebSocketService {
   }
 
   connect() {
-    if (this.client?.connected) {
+    if (this.client?.active) {
       return Promise.resolve();
     }
 
@@ -26,7 +26,6 @@ class WebSocketService {
         heartbeatOutgoing: 4000,
         
         onConnect: () => {
-          console.log('WebSocket connected');
           this.isConnected = true;
           this.reconnectAttempts = 0;
           this.notifyListeners('connected');
@@ -34,7 +33,6 @@ class WebSocketService {
         },
         
         onDisconnect: () => {
-          console.log('WebSocket disconnected');
           this.isConnected = false;
           this.notifyListeners('disconnected');
         },
@@ -52,23 +50,26 @@ class WebSocketService {
 
   disconnect() {
     if (this.client) {
-      this.subscriptions.forEach((_, destination) => {
-        this.unsubscribe(destination);
-      });
       this.client.deactivate();
-      this.client = null;
+      this.subscriptions.clear();
       this.isConnected = false;
     }
   }
 
   subscribe(destination, callback) {
     if (!this.client?.connected) {
-      console.warn('WebSocket not connected, queuing subscription');
+      // Silently queue subscription if not connected
+      const connectListener = (status) => {
+        if (status === 'connected') {
+          this.subscribe(destination, callback);
+          this.listeners.delete(connectListener);
+        }
+      };
+      this.addConnectionListener(connectListener);
       return null;
     }
 
     if (this.subscriptions.has(destination)) {
-      console.warn(`Already subscribed to ${destination}`);
       return this.subscriptions.get(destination);
     }
 

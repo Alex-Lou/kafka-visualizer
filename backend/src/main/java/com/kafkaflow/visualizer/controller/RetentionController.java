@@ -276,6 +276,14 @@ public class RetentionController {
                 "messagesArchived", archived
         ));
     }
+    
+    @PostMapping("/actions/archive-messages")
+    public ResponseEntity<Map<String, Object>> archiveMessages(@RequestBody List<Long> messageIds) {
+        int archived = retentionService.archiveSpecificMessages(messageIds);
+        return ResponseEntity.ok(Map.of(
+                "messagesArchived", archived
+        ));
+    }
 
     @PostMapping("/messages/{messageId}/bookmark")
     public ResponseEntity<Void> bookmarkMessage(

@@ -6,31 +6,47 @@ import com.kafkaflow.visualizer.model.KafkaConnection;
 import com.kafkaflow.visualizer.repository.KafkaConnectionRepository;
 import com.kafkaflow.visualizer.repository.KafkaMessageRepository;
 import com.kafkaflow.visualizer.repository.KafkaTopicRepository;
+import com.kafkaflow.visualizer.service.kafka.KafkaConsumerManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class HealthService {
 
     private final KafkaConnectionRepository connectionRepository;
     private final KafkaTopicRepository topicRepository;
     private final KafkaMessageRepository messageRepository;
-    private final KafkaConsumerManager consumerManager;
+    private final ApplicationContext applicationContext;
 
     private final AtomicLong messageCounter = new AtomicLong(0);
     private final AtomicLong lastMessageCountSnapshot = new AtomicLong(0);
     private volatile LocalDateTime lastSnapshotTime = LocalDateTime.now();
+
+    public HealthService(
+            KafkaConnectionRepository connectionRepository,
+            KafkaTopicRepository topicRepository,
+            KafkaMessageRepository messageRepository,
+            ApplicationContext applicationContext) {
+        this.connectionRepository = connectionRepository;
+        this.topicRepository = topicRepository;
+        this.messageRepository = messageRepository;
+        this.applicationContext = applicationContext;
+    }
+
+    // Lazy retrieval to avoid circular dependency
+    private KafkaConsumerManager getConsumerManager() {
+        return applicationContext.getBean(KafkaConsumerManager.class);
+    }
 
     public HealthStatus getHealthStatus() {
         LocalDateTime now = LocalDateTime.now();
@@ -113,6 +129,7 @@ public class HealthService {
 
     private ComponentHealth checkConsumersHealth() {
         try {
+            KafkaConsumerManager consumerManager = getConsumerManager();
             int activeConsumers = consumerManager.getActiveConsumerCount();
             int monitoredTopics = topicRepository.countMonitoredTopics();
 
@@ -173,26 +190,30 @@ public class HealthService {
     private Map<String, Object> buildMetrics() {
         Map<String, Object> metrics = new HashMap<>();
 
-        LocalDateTime last24h = LocalDateTime.now().minusHours(24);
-        LocalDateTime lastHour = LocalDateTime.now().minusHours(1);
-        LocalDateTime lastMinute = LocalDateTime.now().minusMinutes(1);
+        LocalDateTime now = LocalDateTime.now();
+        Duration timeDelta = Duration.between(lastSnapshotTime, now);
+        long currentMessageCount = messageCounter.get();
+        long previousMessageCount = lastMessageCountSnapshot.get();
+        long messagesSinceLastSnapshot = currentMessageCount - previousMessageCount;
 
-        long messagesLast24h = messageRepository.countMessagesSince(last24h);
-        long messagesLastHour = messageRepository.countMessagesSince(lastHour);
-        long messagesLastMinute = messageRepository.countMessagesSince(lastMinute);
+        double secondsDelta = timeDelta.toMillis() / 1000.0;
+        double messagesPerSecond = (secondsDelta > 0) ? (double) messagesSinceLastSnapshot / secondsDelta : 0;
 
-        // Calculate throughput (messages per second)
-        double messagesPerSecond = messagesLastMinute / 60.0;
+        // Update for next calculation
+        this.lastSnapshotTime = now;
+        this.lastMessageCountSnapshot.set(currentMessageCount);
+
+        long messagesLastHour = messageRepository.countMessagesSince(now.minusHours(1));
         double messagesPerMinute = messagesLastHour / 60.0;
 
-        metrics.put("messagesLast24h", messagesLast24h);
+        metrics.put("messagesLast24h", messageRepository.countMessagesSince(now.minusHours(24)));
         metrics.put("messagesLastHour", messagesLastHour);
-        metrics.put("messagesLastMinute", messagesLastMinute);
+        metrics.put("messagesLastMinute", messagesSinceLastSnapshot);
         metrics.put("throughputPerSecond", Math.round(messagesPerSecond * 100.0) / 100.0);
         metrics.put("throughputPerMinute", Math.round(messagesPerMinute * 100.0) / 100.0);
         metrics.put("totalMessages", messageRepository.count());
         metrics.put("monitoredTopics", topicRepository.countMonitoredTopics());
-        metrics.put("activeConsumers", consumerManager.getActiveConsumerCount());
+        metrics.put("activeConsumers", getConsumerManager().getActiveConsumerCount());
 
         // JVM metrics
         Runtime runtime = Runtime.getRuntime();
@@ -230,5 +251,9 @@ public class HealthService {
     // Called by consumers to track message throughput
     public void recordMessage() {
         messageCounter.incrementAndGet();
+    }
+
+    public void recordMessages(int count) {
+        messageCounter.addAndGet(count);
     }
 }

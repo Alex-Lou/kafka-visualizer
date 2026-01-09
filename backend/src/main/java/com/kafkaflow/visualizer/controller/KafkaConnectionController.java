@@ -63,4 +63,12 @@ public class KafkaConnectionController {
     public ResponseEntity<ApiResponse<List<String>>> discoverTopics(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(connectionService.discoverTopics(id)));
     }
+
+    @PostMapping("/test-error")
+    public ResponseEntity<ApiResponse<ConnectionResponse>> createErrorTestConnection() {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Error test connection created",
+                connectionService.createErrorTestConnection()
+        ));
+    }
 }

@@ -52,6 +52,7 @@ export const topicApi = {
   sync: (connectionId, topicNames) => api.post(`/topics/connection/${connectionId}/sync`, topicNames),
   getMessages: (topicId, params) => api.get(`/topics/${topicId}/messages`, { params }),
   getRecentMessages: (topicId) => api.get(`/topics/${topicId}/messages/recent`),
+  getLiveStats: (topicId) => api.get(`/topics/${topicId}/live-stats`),
 };
 
 // Dashboard endpoints
@@ -103,12 +104,14 @@ export const retentionApi = {
   triggerStatsAggregation: () => api.post('/retention/actions/aggregate-stats'),
   resetTopic: (topicId, data) => api.post(`/retention/actions/reset-topic/${topicId}`, data),
   archiveTopic: (topicId) => api.post(`/retention/actions/archive-topic/${topicId}`),
+  archiveMessages: (messageIds) => api.post('/retention/actions/archive-messages', messageIds),
   bookmarkMessage: (messageId, bookmarked) => api.post(`/retention/messages/${messageId}/bookmark`, {}, { params: { bookmarked } }),
 
   // Job logs
   getJobLogs: (params) => api.get('/retention/jobs', { params }),
   getJobStats: () => api.get('/retention/jobs/stats'),
 };
+
 
 
 export default api;

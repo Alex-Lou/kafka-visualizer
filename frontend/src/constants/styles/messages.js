@@ -3,9 +3,10 @@ export const MESSAGES = {
   // Container
   CONTAINER: 'flex flex-col lg:flex-row gap-6',
   
-  // Messages list panel
-  LIST_PANEL: 'w-full lg:w-96 flex-shrink-0',
-  LIST_CARD: 'bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 overflow-hidden',
+  // Messages list panel - ✅ Retiré lg:w-96 pour permettre le resize
+  LIST_PANEL: 'flex-shrink-0 h-full',
+  LIST_PANEL_WRAPPER: 'relative h-full',
+  LIST_CARD: 'bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 overflow-hidden h-full flex flex-col',
   LIST_HEADER: 'px-4 py-3 border-b border-surface-200 dark:border-surface-800 flex items-center justify-between',
   LIST_TITLE: 'font-semibold text-surface-900 dark:text-white',
   LIST_COUNT: 'text-sm text-surface-500 dark:text-surface-400',
@@ -13,7 +14,13 @@ export const MESSAGES = {
   LIST_FILTERS: 'px-4 py-3 border-b border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-850',
   LIST_FILTER_ROW: 'flex items-center gap-2',
   
-  LIST_CONTENT: 'max-h-[600px] overflow-y-auto',
+  LIST_CONTENT: 'flex-1 overflow-y-auto',
+  
+  // ✅ Resize handle
+  RESIZE_HANDLE: 'absolute top-0 right-0 w-2 h-full cursor-ew-resize z-20 transition-colors',
+  RESIZE_HANDLE_IDLE: 'bg-transparent hover:bg-primary/40',
+  RESIZE_HANDLE_ACTIVE: 'bg-primary',
+  RESIZE_HANDLE_LINE: 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-12 rounded-full bg-gray-400',
   
   // Topic selector
   TOPIC_SELECT: 'w-full px-3 py-2 rounded-lg bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-sm mb-2',
@@ -126,16 +133,16 @@ export const MESSAGES = {
   FILTER_ICON_BTN: 'p-1.5 rounded-lg border transition-colors flex items-center justify-center',
   FILTER_BTN_ARCHIVE: 'bg-purple-100 dark:bg-purple-900/30 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50',
   FILTER_BTN_EMAIL: 'bg-primary-100 dark:bg-primary-900/30 border-primary-200 dark:border-primary-800 text-primary-700 dark:text-primary-300 hover:bg-primary-200 dark:hover:bg-primary-900/50',
-}
+};
 
 export const MESSAGE_DIRECTION = {
   INBOUND: 'INBOUND',
   OUTBOUND: 'OUTBOUND',
-}
+};
 
 export const MESSAGE_STATUS = {
   RECEIVED: 'RECEIVED',
   PROCESSED: 'PROCESSED',
   ERROR: 'ERROR',
   PENDING: 'PENDING',
-}
+};

@@ -10,7 +10,7 @@ import {
   ChevronRight,
   Zap,
 } from 'lucide-react';
-import { useUIStore, useConnectionStore } from '@context/store';
+import { useUIStore, useConnectionStore } from '@context/store/index';
 import { SIDEBAR } from '@constants/styles/sidebar';
 
 const navItems = [

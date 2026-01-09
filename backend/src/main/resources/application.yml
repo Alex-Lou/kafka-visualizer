@@ -10,6 +10,15 @@ spring:
   application:
     name: kafka-visualizer
 
+  main:
+    banner-mode: console
+    log-startup-info: false
+    allow-bean-definition-overriding: true
+
+  output:
+    ansi:
+      enabled: always
+
   # MySQL Database Configuration
   datasource:
     url: jdbc:mysql://localhost:3306/kafka_visualizer?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -33,10 +42,6 @@ spring:
         show_sql: false
     open-in-view: false
 
-  spring:
-    main:
-      allow-bean-definition-overriding=true:
-
   # Kafka Configuration (Optional - can be configured via UI)
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -48,6 +53,19 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  # Email Configuration
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: alex.guennad@gmail.com
+    password: yjustvfqlkqrfjgt
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 # CORS Configuration
 cors:
@@ -62,6 +80,10 @@ app:
     message-retention-hours: 24
     max-messages-per-topic: 10000
 
+# Application Info for banner and startup logs
+application:
+  title: Yucast
+  version: 1.0.0-SNAPSHOT
 
 # Actuator Configuration
 management:
@@ -79,22 +101,6 @@ management:
 
 info:
   app:
-    name: Kafka Flow Visualizer
-    description: Visual Kafka communication monitoring tool
+    name: Yucast
+    description: Yucast communication monitoring tool
     version: 1.0.0-SNAPSHOT
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

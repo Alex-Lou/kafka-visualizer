@@ -25,7 +25,7 @@ public class WebSocketService {
 
         messagingTemplate.convertAndSend("/topic/messages", wsMessage);
         messagingTemplate.convertAndSend("/topic/messages/" + message.getTopicName(), wsMessage);
-        
+
         log.debug("Broadcasted new message for topic: {}", message.getTopicName());
     }
 
@@ -39,14 +39,33 @@ public class WebSocketService {
         messagingTemplate.convertAndSend("/topic/connections", wsMessage);
     }
 
+    // ✅ ANCIEN - gardé pour compatibilité
     public void broadcastTopicUpdate(Long topicId, String topicName, long messageCount) {
+        broadcastTopicUpdate(topicId, topicName, messageCount, 0.0);
+    }
+
+    // ✅ NOUVEAU - avec throughput
+    public void broadcastTopicUpdate(Long topicId, String topicName, long messageCount, double throughput) {
         WebSocketMessage wsMessage = WebSocketMessage.builder()
                 .type("TOPIC_UPDATE")
-                .payload(new TopicUpdatePayload(topicId, topicName, messageCount))
+                .payload(new TopicUpdatePayload(topicId, topicName, messageCount, throughput, LocalDateTime.now()))
                 .timestamp(LocalDateTime.now())
                 .build();
 
         messagingTemplate.convertAndSend("/topic/topics", wsMessage);
+        log.debug("Broadcasted topic update: {} - count: {}, throughput: {}/s", topicName, messageCount, throughput);
+    }
+
+    // ✅ NOUVEAU - broadcast des métriques complètes
+    public void broadcastTopicMetrics(TopicMetricsPayload metrics) {
+        WebSocketMessage wsMessage = WebSocketMessage.builder()
+                .type("TOPIC_METRICS")
+                .payload(metrics)
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        messagingTemplate.convertAndSend("/topic/metrics", wsMessage);
+        messagingTemplate.convertAndSend("/topic/metrics/" + metrics.topicId(), wsMessage);
     }
 
     public void broadcastFlowUpdate(Long diagramId, Object flowData) {
@@ -60,5 +79,23 @@ public class WebSocketService {
     }
 
     private record ConnectionStatusPayload(Long connectionId, String status) {}
-    private record TopicUpdatePayload(Long topicId, String topicName, long messageCount) {}
+
+    public record TopicUpdatePayload(
+            Long topicId,
+            String topicName,
+            long messageCount,
+            double throughput,
+            LocalDateTime lastMessageAt
+    ) {}
+
+    public record TopicMetricsPayload(
+            Long topicId,
+            String topicName,
+            long messageCount,
+            double throughputPerSecond,
+            double throughputPerMinute,
+            long messagesLastMinute,
+            LocalDateTime lastMessageAt,
+            boolean consumerActive
+    ) {}
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Server, MoreVertical, Play, Trash2, Edit, RefreshCw } from 'lucide-react';
 import { Header, Card, Button, Badge, StatusDot, Modal } from '@components/common';
 import ConnectionForm from '@components/forms/ConnectionForm';
-import { useConnectionStore, useUIStore } from '@context/store';
+import { useConnectionStore, useUIStore } from '@context/store/index';
 import { LAYOUT } from '@constants/styles/layout';
 import { CARDS, BUTTONS, INPUTS } from '@constants/styles/components';
 

@@ -1,6 +1,6 @@
 package com.kafkaflow.visualizer.controller;
 
-import com.kafkaflow.visualizer.service.KafkaConsumerManager;
+import com.kafkaflow.visualizer.service.kafka.KafkaConsumerManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;

@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -134,6 +135,14 @@ public class KafkaTopicService {
         return messageRepository.findTop100ByTopicIdOrderByTimestampDesc(topicId).stream()
                 .map(this::toMessageResponse)
                 .toList();
+    }
+    
+    @Transactional(readOnly = true)
+    public List<MessageResponse> getMessagesForReport(List<Long> topicIds) {
+        return topicIds.stream()
+                .flatMap(topicId -> messageRepository.findTop100ByTopicIdOrderByTimestampDesc(topicId).stream())
+                .map(this::toMessageResponse)
+                .collect(Collectors.toList());
     }
 
     @Transactional
