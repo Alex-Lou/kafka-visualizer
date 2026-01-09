@@ -1,5 +1,7 @@
+import { useState, useMemo } from 'react';
 import { Server, MessageSquare, AlertTriangle, Wand2, CheckCircle, XCircle, Loader2, CircleOff } from 'lucide-react';
 import { Button, Badge } from '@components/common';
+import * as styles from '@constants/styles/autoGenerate';
 
 // Helper pour mapper le statut
 const getConnectionStatus = (connection) => {
@@ -17,64 +19,113 @@ const getConnectionStatus = (connection) => {
 };
 
 export default function AutoGenerateModal({ topics, connections, onConfirm, onCancel }) {
+  // État pour gérer les connexions sélectionnées
+  const [selectedConnectionIds, setSelectedConnectionIds] = useState(() => 
+    new Set(connections.map(c => c.id))
+  );
+
+  // Topics monitorés
   const monitoredTopics = topics.filter(t => t.monitored);
   
-  // Compter les connexions par statut
-  const connectedCount = connections.filter(c => c.status === 'CONNECTED').length;
-  const errorCount = connections.filter(c => c.status === 'ERROR').length;
-  const otherCount = connections.length - connectedCount - errorCount;
+  // Connexions sélectionnées
+  const selectedConnections = useMemo(() => 
+    connections.filter(c => selectedConnectionIds.has(c.id)),
+    [connections, selectedConnectionIds]
+  );
+
+  // Topics pour les connexions sélectionnées
+  const selectedMonitoredTopics = useMemo(() => 
+    monitoredTopics.filter(t => selectedConnectionIds.has(t.connectionId)),
+    [monitoredTopics, selectedConnectionIds]
+  );
+
+  // Compter les connexions par statut (parmi les sélectionnées)
+  const connectedCount = selectedConnections.filter(c => c.status === 'CONNECTED').length;
+  const errorCount = selectedConnections.filter(c => c.status === 'ERROR').length;
+  const otherCount = selectedConnections.length - connectedCount - errorCount;
+
+  // Handlers de sélection
+  const handleToggleConnection = (connectionId) => {
+    setSelectedConnectionIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(connectionId)) {
+        newSet.delete(connectionId);
+      } else {
+        newSet.add(connectionId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedConnectionIds(new Set(connections.map(c => c.id)));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedConnectionIds(new Set());
+  };
+
+  // Handler de confirmation avec les connexions sélectionnées
+  const handleConfirm = () => {
+    const selectedIds = Array.from(selectedConnectionIds);
+    onConfirm(selectedIds);
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-surface-900 rounded-2xl w-full max-w-md mx-4 shadow-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-surface-200 dark:border-surface-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center">
-              <Wand2 className="w-5 h-5 text-primary-600" />
+    <div className={styles.MODAL_OVERLAY}>
+      <div className={styles.MODAL_CONTAINER}>
+        {/* Header */}
+        <div className={styles.HEADER_WRAPPER}>
+          <div className={styles.HEADER_CONTENT}>
+            <div className={styles.HEADER_ICON_WRAPPER}>
+              <Wand2 className={styles.HEADER_ICON} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-surface-900 dark:text-white">
+              <h3 className={styles.HEADER_TITLE}>
                 Auto-Generate Flow
               </h3>
-              <p className="text-sm text-surface-500">From your connections & topics</p>
+              <p className={styles.HEADER_SUBTITLE}>From your connections & topics</p>
             </div>
           </div>
         </div>
 
-        <div className="p-6 space-y-4">
-          <p className="text-surface-600 dark:text-surface-400">
-            This will create a flow diagram with:
+        {/* Body */}
+        <div className={styles.BODY_WRAPPER}>
+          <p className={styles.BODY_DESCRIPTION}>
+            Select the connections to include in the flow:
           </p>
 
-          <div className="space-y-2">
-            {/* Connections avec détail par statut */}
-            <div className="p-3 bg-surface-50 dark:bg-surface-800 rounded-xl space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Server className="w-4 h-4 text-primary-500" />
-                  <span className="text-sm font-medium text-surface-700 dark:text-surface-300">Connections</span>
+          <div className={styles.SECTION_WRAPPER}>
+            {/* Connections Summary Card */}
+            <div className={styles.SUMMARY_CARD}>
+              <div className={styles.SUMMARY_CARD_HEADER}>
+                <div className={styles.SUMMARY_CARD_LABEL_WRAPPER}>
+                  <Server className={styles.SUMMARY_CARD_ICON_PRIMARY} />
+                  <span className={styles.SUMMARY_CARD_LABEL}>Connections</span>
                 </div>
-                <Badge variant="primary">{connections.length}</Badge>
+                <Badge variant="primary">
+                  {selectedConnections.length} / {connections.length}
+                </Badge>
               </div>
               
-              {/* Breakdown par statut */}
-              {connections.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-2 border-t border-surface-200 dark:border-surface-700">
+              {/* Status Breakdown */}
+              {selectedConnections.length > 0 && (
+                <div className={styles.STATUS_BREAKDOWN_WRAPPER}>
                   {connectedCount > 0 && (
                     <Badge variant="success" size="sm">
-                      <CheckCircle className="w-3 h-3 mr-1" />
+                      <CheckCircle className={styles.STATUS_ICON_SMALL} />
                       {connectedCount} connected
                     </Badge>
                   )}
                   {errorCount > 0 && (
                     <Badge variant="danger" size="sm">
-                      <XCircle className="w-3 h-3 mr-1" />
+                      <XCircle className={styles.STATUS_ICON_SMALL} />
                       {errorCount} error
                     </Badge>
                   )}
                   {otherCount > 0 && (
                     <Badge variant="secondary" size="sm">
-                      <CircleOff className="w-3 h-3 mr-1" />
+                      <CircleOff className={styles.STATUS_ICON_SMALL} />
                       {otherCount} other
                     </Badge>
                   )}
@@ -82,35 +133,70 @@ export default function AutoGenerateModal({ topics, connections, onConfirm, onCa
               )}
             </div>
 
-            {/* Liste des connexions individuelles */}
+            {/* Select All / Deselect All Controls */}
             {connections.length > 0 && (
-              <div className="max-h-40 overflow-y-auto space-y-1">
+              <div className={styles.SELECT_ALL_WRAPPER}>
+                <span className={styles.SELECT_ALL_LABEL}>
+                  {selectedConnectionIds.size} selected
+                </span>
+                <div className={styles.SELECT_ALL_BUTTONS}>
+                  <button 
+                    type="button"
+                    onClick={handleSelectAll}
+                    className={styles.SELECT_ALL_BUTTON}
+                  >
+                    Select all
+                  </button>
+                  <span className={styles.SELECT_ALL_LABEL}>|</span>
+                  <button 
+                    type="button"
+                    onClick={handleDeselectAll}
+                    className={styles.SELECT_ALL_BUTTON}
+                  >
+                    Deselect all
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Connections List with Checkboxes */}
+            {connections.length > 0 && (
+              <div className={styles.CONNECTIONS_LIST_WRAPPER}>
                 {connections.map((connection) => {
                   const statusInfo = getConnectionStatus(connection);
                   const StatusIcon = statusInfo.icon;
+                  const isSelected = selectedConnectionIds.has(connection.id);
                   const topicsForConnection = topics.filter(
                     t => t.connectionId === connection.id && t.monitored
                   ).length;
                   
                   return (
-                    <div 
+                    <label 
                       key={connection.id}
-                      className="flex items-center justify-between p-2 bg-surface-100 dark:bg-surface-700/50 rounded-lg"
+                      className={styles.getConnectionItemClass(isSelected)}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <StatusIcon className={`w-4 h-4 flex-shrink-0 ${
-                          statusInfo.variant === 'success' ? 'text-green-500' :
-                          statusInfo.variant === 'danger' ? 'text-red-500' :
-                          statusInfo.variant === 'warning' ? 'text-yellow-500 animate-spin' :
-                          'text-gray-400'
-                        }`} />
-                        <span className="text-sm text-surface-700 dark:text-surface-300 truncate">
+                      {/* Checkbox */}
+                      <div className={styles.CHECKBOX_WRAPPER}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleConnection(connection.id)}
+                          className={styles.CHECKBOX_INPUT}
+                        />
+                      </div>
+
+                      {/* Connection Info */}
+                      <div className={styles.CONNECTION_INFO_WRAPPER}>
+                        <StatusIcon className={styles.getStatusIconClass(statusInfo.variant)} />
+                        <span className={styles.CONNECTION_NAME}>
                           {connection.name}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
+
+                      {/* Meta Info */}
+                      <div className={styles.CONNECTION_META_WRAPPER}>
                         {topicsForConnection > 0 && (
-                          <span className="text-xs text-surface-500">
+                          <span className={styles.CONNECTION_TOPICS_COUNT}>
                             {topicsForConnection} topic{topicsForConnection > 1 ? 's' : ''}
                           </span>
                         )}
@@ -118,62 +204,74 @@ export default function AutoGenerateModal({ topics, connections, onConfirm, onCa
                           {statusInfo.label}
                         </Badge>
                       </div>
-                    </div>
+                    </label>
                   );
                 })}
               </div>
             )}
 
-            {/* Monitored Topics */}
-            <div className="flex items-center justify-between p-3 bg-surface-50 dark:bg-surface-800 rounded-xl">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-accent-500" />
-                <span className="text-sm text-surface-700 dark:text-surface-300">Monitored Topics</span>
+            {/* Monitored Topics Card */}
+            <div className={styles.TOPICS_CARD}>
+              <div className={styles.TOPICS_LABEL_WRAPPER}>
+                <MessageSquare className={styles.SUMMARY_CARD_ICON_ACCENT} />
+                <span className={styles.TOPICS_LABEL}>Monitored Topics</span>
               </div>
-              <Badge variant="accent">{monitoredTopics.length}</Badge>
+              <Badge variant="accent">
+                {selectedMonitoredTopics.length} / {monitoredTopics.length}
+              </Badge>
             </div>
           </div>
 
-          {/* Warnings */}
+          {/* Alerts */}
           {connections.length === 0 && (
-            <div className="flex items-start gap-2 p-3 bg-danger-50 dark:bg-danger-900/30 rounded-xl">
-              <AlertTriangle className="w-4 h-4 text-danger-500 mt-0.5" />
-              <p className="text-sm text-danger-700 dark:text-danger-300">
+            <div className={styles.ALERT_DANGER}>
+              <AlertTriangle className={styles.ALERT_ICON_DANGER} />
+              <p className={styles.ALERT_TEXT_DANGER}>
                 No connections found. Create a connection first.
               </p>
             </div>
           )}
 
+          {selectedConnections.length === 0 && connections.length > 0 && (
+            <div className={styles.ALERT_WARNING}>
+              <AlertTriangle className={styles.ALERT_ICON_WARNING} />
+              <p className={styles.ALERT_TEXT_WARNING}>
+                Select at least one connection to generate the flow.
+              </p>
+            </div>
+          )}
+
           {errorCount > 0 && (
-            <div className="flex items-start gap-2 p-3 bg-warning-50 dark:bg-warning-900/30 rounded-xl">
-              <AlertTriangle className="w-4 h-4 text-warning-500 mt-0.5" />
-              <p className="text-sm text-warning-700 dark:text-warning-300">
+            <div className={styles.ALERT_WARNING}>
+              <AlertTriangle className={styles.ALERT_ICON_WARNING} />
+              <p className={styles.ALERT_TEXT_WARNING}>
                 {errorCount} connection{errorCount > 1 ? 's' : ''} in error state will appear in red.
               </p>
             </div>
           )}
 
-          {monitoredTopics.length === 0 && connections.length > 0 && (
-            <div className="flex items-start gap-2 p-3 bg-info-50 dark:bg-info-900/30 rounded-xl">
-              <AlertTriangle className="w-4 h-4 text-info-500 mt-0.5" />
-              <p className="text-sm text-info-700 dark:text-info-300">
-                No monitored topics. Only cluster nodes will be generated.
+          {selectedMonitoredTopics.length === 0 && selectedConnections.length > 0 && (
+            <div className={styles.ALERT_INFO}>
+              <AlertTriangle className={styles.ALERT_ICON_INFO} />
+              <p className={styles.ALERT_TEXT_INFO}>
+                No monitored topics for selected connections. Only cluster nodes will be generated.
               </p>
             </div>
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-surface-200 dark:border-surface-800 flex gap-3 justify-end">
+        {/* Footer */}
+        <div className={styles.FOOTER_WRAPPER}>
           <Button variant="secondary" onClick={onCancel}>
             Cancel
           </Button>
           <Button
             variant="primary"
             icon={Wand2}
-            onClick={onConfirm}
-            disabled={connections.length === 0}
+            onClick={handleConfirm}
+            disabled={selectedConnections.length === 0}
           >
-            Generate
+            Generate ({selectedConnections.length})
           </Button>
         </div>
       </div>
