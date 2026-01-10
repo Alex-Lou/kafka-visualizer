@@ -2,24 +2,26 @@ import { useState, useEffect } from 'react';
 import { X, Eye, EyeOff, Trash2, BarChart3, MessageSquare, AlertTriangle, RefreshCw, Clock, Server, FileWarning, Activity } from 'lucide-react';
 import { Button, Badge } from '@components/common';
 import { STATUS, STATUS_COLORS } from '@components/flow/constants';
+import { useTopicStore } from '@context/store';
 
 export function TopicControlPanel({ node, onClose, onUpdate, onDelete, onToggleMonitor }) {
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(node.data.label || '');
   
-  // ✅ État local pour les métriques temps réel
-  const [metrics, setMetrics] = useState({
-    messageCount: node.data.messageCount || 0,
-    throughput: node.data.throughput || 0,
-  });
+  // ✅ Se connecter directement au topicStore pour les métriques temps réel
+  const topicFromStore = useTopicStore(state => 
+    state.topics.find(t => t.id === node.data.topicId)
+  );
 
-  // ✅ Mettre à jour les métriques quand node.data change
-  useEffect(() => {
-    setMetrics({
-      messageCount: node.data.messageCount || 0,
-      throughput: node.data.throughput || 0,
-    });
-  }, [node.data.messageCount, node.data.throughput]);
+  // ✅ Métriques combinées: priorité au store (temps réel), fallback sur node.data
+  const metrics = {
+    messageCount: topicFromStore?.messageCount ?? node.data.messageCount ?? 0,
+    throughput: topicFromStore?.throughput ?? node.data.throughput ?? 0,
+    throughputPerMinute: topicFromStore?.throughputPerMinute ?? node.data.throughputPerMinute ?? 0,
+    messagesLastMinute: topicFromStore?.messagesLastMinute ?? node.data.messagesLastMinute ?? 0,
+    consumerActive: topicFromStore?.consumerActive ?? node.data.consumerActive ?? false,
+    lastMessageAt: topicFromStore?.lastMessageAt ?? node.data.lastMessageAt,
+  };
 
   const handleSave = () => {
     onUpdate(node.id, { label });
@@ -67,6 +69,24 @@ export function TopicControlPanel({ node, onClose, onUpdate, onDelete, onToggleM
     if (value < 1) return `${value.toFixed(2)}/s`;
     if (value < 10) return `${value.toFixed(1)}/s`;
     return `${Math.round(value)}/s`;
+  };
+
+  // ✅ Formater le temps relatif
+  const formatRelativeTime = (timestamp) => {
+    if (!timestamp) return null;
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffSec = Math.floor(diffMs / 1000);
+      
+      if (diffSec < 5) return 'just now';
+      if (diffSec < 60) return `${diffSec}s ago`;
+      if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+      return formatTimestamp(timestamp);
+    } catch {
+      return null;
+    }
   };
 
   return (
@@ -186,7 +206,7 @@ export function TopicControlPanel({ node, onClose, onUpdate, onDelete, onToggleM
             </div>
           )}
 
-          {/* ✅ METRICS - Amélioré avec indicateur d'activité */}
+          {/* ✅ METRICS - Temps réel depuis le store */}
           <div className={`grid grid-cols-2 gap-3 p-3 rounded-lg ${isError ? 'bg-muted/50 opacity-60' : 'bg-muted'}`}>
             <div>
               <p className="text-xs text-muted-foreground">Messages</p>
@@ -207,15 +227,42 @@ export function TopicControlPanel({ node, onClose, onUpdate, onDelete, onToggleM
             </div>
           </div>
 
-          {/* ✅ Indicateur temps réel */}
+          {/* ✅ Métriques étendues (si disponibles) */}
+          {(metrics.messagesLastMinute > 0 || metrics.throughputPerMinute > 0) && (
+            <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-muted/50">
+              <div>
+                <p className="text-xs text-muted-foreground">Last Minute</p>
+                <p className="text-sm font-medium text-foreground">
+                  {metrics.messagesLastMinute.toLocaleString()} msgs
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Rate/min</p>
+                <p className="text-sm font-medium text-foreground">
+                  {Math.round(metrics.throughputPerMinute)}/min
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ✅ Indicateur temps réel amélioré */}
           {node.data.monitored && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-              <div className={`w-2 h-2 rounded-full ${hasActivity ? 'bg-green-500 animate-pulse' : 'bg-blue-500'}`} />
-              <span className="text-xs text-blue-400">
-                {hasActivity 
-                  ? `Receiving ~${Math.round(metrics.throughput * 60)} msg/min` 
-                  : 'Consumer active, waiting for messages...'}
-              </span>
+            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${hasActivity ? 'bg-green-500 animate-pulse' : metrics.consumerActive ? 'bg-blue-500' : 'bg-gray-500'}`} />
+                <span className="text-xs text-blue-400">
+                  {hasActivity 
+                    ? `Receiving ~${Math.round(metrics.throughput * 60)} msg/min` 
+                    : metrics.consumerActive 
+                      ? 'Consumer active, waiting for messages...'
+                      : 'Consumer inactive'}
+                </span>
+              </div>
+              {metrics.lastMessageAt && (
+                <span className="text-xs text-muted-foreground">
+                  {formatRelativeTime(metrics.lastMessageAt)}
+                </span>
+              )}
             </div>
           )}
 

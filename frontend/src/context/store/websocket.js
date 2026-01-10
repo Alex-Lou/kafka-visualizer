@@ -17,21 +17,46 @@ const notifyWsStatusChange = (connected) => {
 };
 
 const setupWebSocketSubscriptions = () => {
+  // ═══════════════════════════════════════════════════════════════════════
+  // NEW MESSAGES - Nouveau message reçu
+  // ═══════════════════════════════════════════════════════════════════════
   wsService.subscribe('/topic/messages', (message) => {
     if (message.type === 'NEW_MESSAGE' && message.payload) {
       useMessageStore.getState().addMessage(message.payload);
+      
+      // ✅ Incrémenter le compteur (le throughput viendra via TOPIC_UPDATE)
       useTopicStore.getState().updateTopicCountByName(message.payload.topicName, 1);
       useDashboardStore.getState().incrementMessageCount();
     }
   });
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // TOPIC UPDATE - Mise à jour rapide (messageCount + throughput)
+  // ═══════════════════════════════════════════════════════════════════════
   wsService.subscribe('/topic/topics', (message) => {
     if (message.type === 'TOPIC_UPDATE' && message.payload) {
-      const { topicId, messageCount } = message.payload;
-      useTopicStore.getState().updateTopicCount(topicId, messageCount);
+      const { topicId, messageCount, throughput } = message.payload;
+      
+      // ✅ Maintenant on passe aussi le throughput !
+      useTopicStore.getState().updateTopicCount(topicId, messageCount, throughput);
     }
   });
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // TOPIC METRICS - Métriques complètes (toutes les 3 secondes)
+  // ═══════════════════════════════════════════════════════════════════════
+  wsService.subscribe('/topic/metrics', (message) => {
+    if (message.type === 'TOPIC_METRICS' && message.payload) {
+      const metrics = message.payload;
+      
+      // ✅ Mise à jour complète des métriques
+      useTopicStore.getState().updateTopicMetrics(metrics.topicId, metrics);
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CONNECTION STATUS - Statut des connexions Kafka
+  // ═══════════════════════════════════════════════════════════════════════
   wsService.subscribe('/topic/connections', (message) => {
     if (message.type === 'CONNECTION_STATUS' && message.payload) {
       const { connectionId, status } = message.payload;
