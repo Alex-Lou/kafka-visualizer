@@ -141,21 +141,65 @@ export const useTopicStore = create((set, get) => ({
     return results;
   },
 
-  updateTopicCount: (topicId, newCount) => {
+  // ✅ UPDATED - Mise à jour avec messageCount ET throughput
+  updateTopicCount: (topicId, newCount, throughput = null) => {
     set(state => ({
       topics: state.topics.map((t) =>
-        t.id === topicId ? { ...t, messageCount: newCount } : t
+        t.id === topicId 
+          ? { 
+              ...t, 
+              messageCount: newCount,
+              ...(throughput !== null && { throughput }),
+              lastMessageAt: new Date().toISOString()
+            } 
+          : t
       ),
     }));
   },
 
-  updateTopicCountByName: (topicName, increment = 1) => {
+  // ✅ UPDATED - Mise à jour par nom avec throughput
+  updateTopicCountByName: (topicName, increment = 1, throughput = null) => {
     set(state => ({
       topics: state.topics.map((t) =>
         t.name === topicName
-          ? { ...t, messageCount: (t.messageCount || 0) + increment, lastMessageAt: new Date().toISOString() }
+          ? { 
+              ...t, 
+              messageCount: (t.messageCount || 0) + increment, 
+              ...(throughput !== null && { throughput }),
+              lastMessageAt: new Date().toISOString() 
+            }
           : t
       ),
     }));
+  },
+
+  // ✅ NEW - Mise à jour des métriques complètes
+  updateTopicMetrics: (topicId, metrics) => {
+    set(state => ({
+      topics: state.topics.map((t) =>
+        t.id === topicId
+          ? {
+              ...t,
+              messageCount: metrics.messageCount ?? t.messageCount,
+              throughput: metrics.throughputPerSecond ?? t.throughput ?? 0,
+              throughputPerMinute: metrics.throughputPerMinute ?? 0,
+              messagesLastMinute: metrics.messagesLastMinute ?? 0,
+              lastMessageAt: metrics.lastMessageAt ?? t.lastMessageAt,
+              consumerActive: metrics.consumerActive ?? false,
+            }
+          : t
+      ),
+    }));
+  },
+
+  // ✅ NEW - Récupérer un topic par ID
+  getTopicById: (topicId) => {
+    return get().topics.find(t => t.id === topicId);
+  },
+
+  // ✅ NEW - Récupérer le throughput d'un topic
+  getTopicThroughput: (topicId) => {
+    const topic = get().topics.find(t => t.id === topicId);
+    return topic?.throughput ?? 0;
   },
 }));
