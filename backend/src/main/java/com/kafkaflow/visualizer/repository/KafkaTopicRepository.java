@@ -18,11 +18,11 @@ public interface KafkaTopicRepository extends JpaRepository<KafkaTopic, Long> {
 
     List<KafkaTopic> findByMonitoredTrue();
 
-    // ✅ NOUVEAU: Avec JOIN FETCH pour éviter LazyInitializationException
+    // Avec JOIN FETCH pour éviter LazyInitializationException
     @Query("SELECT t FROM KafkaTopic t LEFT JOIN FETCH t.connection WHERE t.monitored = true")
     List<KafkaTopic> findByMonitoredTrueWithConnection();
 
-    // ✅ NOUVEAU: Avec JOIN FETCH pour un topic spécifique
+    // Avec JOIN FETCH pour un topic spécifique
     @Query("SELECT t FROM KafkaTopic t LEFT JOIN FETCH t.connection WHERE t.id = :id")
     Optional<KafkaTopic> findByIdWithConnection(@Param("id") Long id);
 
@@ -41,4 +41,29 @@ public interface KafkaTopicRepository extends JpaRepository<KafkaTopic, Long> {
 
     long countByConnectionId(Long connectionId);
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // ORPHAN TOPICS - Topics sans connexion active (CONNECTED)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Trouve tous les topics dont la connexion n'est pas en statut CONNECTED
+     * (connexion en erreur, déconnectée, en cours de connexion, ou supprimée)
+     */
+    @Query("SELECT t FROM KafkaTopic t LEFT JOIN FETCH t.connection c " +
+            "WHERE c IS NULL OR c.status <> 'CONNECTED'")
+    List<KafkaTopic> findOrphanTopics();
+
+    /**
+     * Compte le nombre de topics orphelins
+     */
+    @Query("SELECT COUNT(t) FROM KafkaTopic t LEFT JOIN t.connection c " +
+            "WHERE c IS NULL OR c.status <> 'CONNECTED'")
+    long countOrphanTopics();
+
+    /**
+     * Trouve les topics orphelins par liste d'IDs
+     */
+    @Query("SELECT t FROM KafkaTopic t LEFT JOIN FETCH t.connection c " +
+            "WHERE t.id IN :ids AND (c IS NULL OR c.status <> 'CONNECTED')")
+    List<KafkaTopic> findOrphanTopicsByIds(@Param("ids") List<Long> ids);
 }
