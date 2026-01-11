@@ -10,7 +10,7 @@ import { Save, FolderOpen, Cloud } from 'lucide-react';
 import { LAYOUT } from '@constants/styles/layout';
 import { FLOW as STYLES } from '@constants/styles/flow';
 
-import { AutoGenerateModal, FlowListModal } from '@components/flow/modals';
+import { AutoGenerateModal, FlowListModal, CleanupModal } from '@components/flow/modals';
 import { FlowToolbar } from './FlowToolbar';
 import { FlowCanvas } from './FlowCanvas';
 
@@ -19,7 +19,7 @@ export default function FlowPage() {
   
   // Stores
   const { topics, fetchAllTopics } = useTopicStore();
-  const { connections } = useConnectionStore();
+  const { connections, fetchConnections } = useConnectionStore();
   const { wsConnected, addNotification } = useUIStore();
   const {
     nodes, edges, currentFlow, liveMode, historyStack, redoStack, flows, isSaving, hasUnsavedChanges,
@@ -32,6 +32,7 @@ export default function FlowPage() {
   // Local State
   const [showAutoGenerate, setShowAutoGenerate] = useState(false);
   const [showFlowList, setShowFlowList] = useState(false);
+  const [showCleanup, setShowCleanup] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -180,6 +181,29 @@ export default function FlowPage() {
     }
   };
 
+  // Handler pour le cleanup
+  const handleCleanupDeleted = (deletedCount, details) => {
+    const parts = [];
+    if (details?.connectionsDeleted > 0) {
+      parts.push(`${details.connectionsDeleted} connection(s)`);
+    }
+    if (details?.topicsDeleted > 0) {
+      parts.push(`${details.topicsDeleted} topic(s)`);
+    }
+    
+    addNotification({ 
+      type: 'success', 
+      title: 'Cleanup completed', 
+      message: `Deleted ${parts.join(' and ')}` 
+    });
+    
+    // Rafraîchir les données
+    fetchAllTopics();
+    if (typeof fetchConnections === 'function') {
+      fetchConnections();
+    }
+  };
+
   const selectedNodesCount = nodes.filter(n => n.selected).length;
 
   return (
@@ -217,6 +241,7 @@ export default function FlowPage() {
             onUndo={handleUndo}
             onRedo={handleRedo}
             onExportPDF={handleExportPDF}
+            onOrphanTopics={() => setShowCleanup(true)}
             canUndo={historyStack.length > 0}
             canRedo={redoStack.length > 0}
             historyCount={historyStack.length}
@@ -259,8 +284,31 @@ export default function FlowPage() {
         </div>
       </main>
 
-      {showAutoGenerate && <AutoGenerateModal topics={topics} connections={connections} onConfirm={handleAutoGenerate} onCancel={() => setShowAutoGenerate(false)} />}
-      {showFlowList && <FlowListModal flows={flows} onSelect={handleLoadFlow} onCreate={handleNewFlow} onDelete={handleDeleteFlow} onClose={() => setShowFlowList(false)} />}
+      {showAutoGenerate && (
+        <AutoGenerateModal 
+          topics={topics} 
+          connections={connections} 
+          onConfirm={handleAutoGenerate} 
+          onCancel={() => setShowAutoGenerate(false)} 
+        />
+      )}
+      
+      {showFlowList && (
+        <FlowListModal 
+          flows={flows} 
+          onSelect={handleLoadFlow} 
+          onCreate={handleNewFlow} 
+          onDelete={handleDeleteFlow} 
+          onClose={() => setShowFlowList(false)} 
+        />
+      )}
+      
+      {showCleanup && (
+        <CleanupModal 
+          onClose={() => setShowCleanup(false)}
+          onDeleted={handleCleanupDeleted}
+        />
+      )}
     </>
   );
 }
