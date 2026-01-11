@@ -221,4 +221,142 @@ public class KafkaTopicService {
                 .targetApplication(message.getTargetApplication())
                 .build();
     }
+
+
+    // ============================================================
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ORPHAN TOPICS MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Récupère tous les topics orphelins (sans connexion active)
+     */
+    @Transactional(readOnly = true)
+    public List<TopicResponse> getOrphanTopics() {
+        return topicRepository.findOrphanTopics().stream()
+                .map(this::toOrphanTopicResponse)
+                .toList();
+    }
+
+    /**
+     * Compte le nombre de topics orphelins
+     */
+    @Transactional(readOnly = true)
+    public long countOrphanTopics() {
+        return topicRepository.countOrphanTopics();
+    }
+
+    /**
+     * Supprime les topics orphelins sélectionnés par leurs IDs
+     * Vérifie que les topics sont bien orphelins avant suppression
+     *
+     * @param ids Liste des IDs de topics à supprimer
+     * @return Résultat avec le nombre de topics supprimés
+     */
+    @Transactional
+    public OrphanDeleteResult deleteOrphanTopics(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return new OrphanDeleteResult(0, 0, "No topics specified");
+        }
+
+        // Récupérer uniquement les topics qui sont vraiment orphelins parmi les IDs demandés
+        List<KafkaTopic> orphansToDelete = topicRepository.findOrphanTopicsByIds(ids);
+
+        int requested = ids.size();
+        int deleted = orphansToDelete.size();
+        int skipped = requested - deleted;
+
+        if (!orphansToDelete.isEmpty()) {
+            // Supprimer les messages associés d'abord (si cascade pas configurée)
+            for (KafkaTopic topic : orphansToDelete) {
+                messageRepository.deleteByTopicId(topic.getId());
+            }
+            // Supprimer les topics
+            topicRepository.deleteAll(orphansToDelete);
+
+            log.info("Deleted {} orphan topics (skipped {} non-orphan)", deleted, skipped);
+        }
+
+        String message = deleted > 0
+                ? String.format("Successfully deleted %d orphan topic(s)", deleted)
+                : "No orphan topics were deleted";
+
+        if (skipped > 0) {
+            message += String.format(" (%d skipped - not orphans)", skipped);
+        }
+
+        return new OrphanDeleteResult(deleted, skipped, message);
+    }
+
+    /**
+     * Supprime TOUS les topics orphelins
+     *
+     * @return Résultat avec le nombre de topics supprimés
+     */
+    @Transactional
+    public OrphanDeleteResult deleteAllOrphanTopics() {
+        List<KafkaTopic> orphans = topicRepository.findOrphanTopics();
+
+        if (orphans.isEmpty()) {
+            return new OrphanDeleteResult(0, 0, "No orphan topics found");
+        }
+
+        int deleted = orphans.size();
+
+        // Supprimer les messages associés d'abord
+        for (KafkaTopic topic : orphans) {
+            messageRepository.deleteByTopicId(topic.getId());
+        }
+        // Supprimer les topics
+        topicRepository.deleteAll(orphans);
+
+        log.info("Deleted all {} orphan topics", deleted);
+
+        return new OrphanDeleteResult(deleted, 0,
+                String.format("Successfully deleted %d orphan topic(s)", deleted));
+    }
+
+    /**
+     * Convertit un topic orphelin en response avec info sur la connexion
+     */
+    private TopicResponse toOrphanTopicResponse(KafkaTopic topic) {
+        String connectionName = "No connection";
+        String connectionStatus = "DELETED";
+        Long connectionId = null;
+
+        if (topic.getConnection() != null) {
+            connectionName = topic.getConnection().getName();
+            connectionStatus = topic.getConnection().getStatus().name();
+            connectionId = topic.getConnection().getId();
+        }
+
+        return TopicResponse.builder()
+                .id(topic.getId())
+                .name(topic.getName())
+                .connectionId(connectionId)
+                .connectionName(connectionName)
+                .connectionStatus(connectionStatus)  // ← Nouveau champ
+                .partitions(topic.getPartitions())
+                .replicationFactor(topic.getReplicationFactor())
+                .description(topic.getDescription())
+                .color(topic.getColor())
+                .monitored(topic.isMonitored())
+                .messageCount(topic.getMessageCount())
+                .lastMessageAt(topic.getLastMessageAt())
+                .build();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // INNER CLASSES / RECORDS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Résultat d'une opération de suppression d'orphelins
+     */
+    public record OrphanDeleteResult(
+            int deleted,
+            int skipped,
+            String message
+    ) {}
 }

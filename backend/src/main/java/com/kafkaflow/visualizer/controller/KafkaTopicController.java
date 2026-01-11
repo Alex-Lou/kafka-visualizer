@@ -88,4 +88,69 @@ public class KafkaTopicController {
             @PathVariable Long topicId) {
         return ResponseEntity.ok(ApiResponse.success(topicService.getRecentMessages(topicId)));
     }
+
+    // ============================================================
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ORPHAN TOPICS ENDPOINTS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * GET /api/topics/orphans
+     * Récupère la liste des topics orphelins (sans connexion active)
+     */
+    @GetMapping("/orphans")
+    public ResponseEntity<ApiResponse<List<TopicResponse>>> getOrphanTopics() {
+        List<TopicResponse> orphans = topicService.getOrphanTopics();
+        String message = orphans.isEmpty()
+                ? "No orphan topics found"
+                : String.format("Found %d orphan topic(s)", orphans.size());
+        return ResponseEntity.ok(ApiResponse.success(message, orphans));
+    }
+
+    /**
+     * GET /api/topics/orphans/count
+     * Compte le nombre de topics orphelins
+     */
+    @GetMapping("/orphans/count")
+    public ResponseEntity<ApiResponse<Long>> countOrphanTopics() {
+        long count = topicService.countOrphanTopics();
+        return ResponseEntity.ok(ApiResponse.success(count));
+    }
+
+    /**
+     * DELETE /api/topics/orphans
+     * Supprime les topics orphelins sélectionnés
+     * Body: { "ids": [1, 2, 3] }
+     */
+    @DeleteMapping("/orphans")
+    public ResponseEntity<ApiResponse<OrphanDeleteResponse>> deleteOrphanTopics(
+            @RequestBody OrphanDeleteRequest request) {
+        var result = topicService.deleteOrphanTopics(request.ids());
+        return ResponseEntity.ok(ApiResponse.success(
+                result.message(),
+                new OrphanDeleteResponse(result.deleted(), result.skipped())
+        ));
+    }
+
+    /**
+     * DELETE /api/topics/orphans/all
+     * Supprime TOUS les topics orphelins
+     */
+    @DeleteMapping("/orphans/all")
+    public ResponseEntity<ApiResponse<OrphanDeleteResponse>> deleteAllOrphanTopics() {
+        var result = topicService.deleteAllOrphanTopics();
+        return ResponseEntity.ok(ApiResponse.success(
+                result.message(),
+                new OrphanDeleteResponse(result.deleted(), result.skipped())
+        ));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DTOs pour les orphelins
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public record OrphanDeleteRequest(List<Long> ids) {}
+
+    public record OrphanDeleteResponse(int deleted, int skipped) {}
 }
