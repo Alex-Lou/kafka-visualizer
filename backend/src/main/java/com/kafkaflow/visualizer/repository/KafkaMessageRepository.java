@@ -90,6 +90,9 @@ public interface KafkaMessageRepository extends JpaRepository<KafkaMessage, Long
     @Query("SELECT MIN(m.timestamp) FROM KafkaMessage m WHERE m.topic.id = :topicId")
     LocalDateTime findOldestTimestampByTopicId(@Param("topicId") Long topicId);
 
+    @Modifying
+    @Query("DELETE FROM KafkaMessage m WHERE m.topic.id = :topicId")
+    void deleteAllByTopicId(@Param("topicId") Long topicId);
 
 
 }

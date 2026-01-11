@@ -1,4 +1,4 @@
-import { Wand2, LayoutGrid, Undo2, Redo2, Download, History, Hand, MousePointer2, CloudOff, Cloud } from 'lucide-react';
+import { Wand2, LayoutGrid, Undo2, Redo2, Download, History, Hand, MousePointer2, CloudOff, Cloud, Trash2 } from 'lucide-react';
 import { Button } from '@components/common';
 import { FLOW as STYLES } from '@constants/styles/flow';
 
@@ -6,12 +6,13 @@ export function FlowToolbar({
   onAutoGenerate,
   onAutoLayout,
   onUndo,
-  onRedo, // 🆕
+  onRedo,
   onExportPDF,
+  onOrphanTopics,  // ✅ NOUVEAU
   canUndo,
-  canRedo, // 🆕
+  canRedo,
   historyCount,
-  redoCount, // 🆕
+  redoCount,
   selectionMode,
   setSelectionMode,
   liveMode,
@@ -19,7 +20,6 @@ export function FlowToolbar({
   nodesCount,
   edgesCount,
   isExporting,
-  // 🆕 Auto-save props
   autoSaveEnabled,
   setAutoSaveEnabled,
   lastAutoSave,
@@ -77,6 +77,18 @@ export function FlowToolbar({
         >
           Export PDF
         </Button>
+        
+        {/* ✅ NOUVEAU - Bouton Orphan Topics */}
+        <div className={STYLES.TOOLBAR_DIVIDER} />
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={Trash2}
+          onClick={onOrphanTopics}
+          title="Find and delete orphan topics (topics without active connection)"
+        >
+          Orphan Topics
+        </Button>
       </div>
 
       <div className={STYLES.TOOLBAR_SECTION}>
@@ -123,7 +135,7 @@ export function FlowToolbar({
 
         <div className={STYLES.TOOLBAR_DIVIDER} />
 
-        {/* 🆕 Auto-Save Toggle */}
+        {/* Auto-Save Toggle */}
         <div className={STYLES.LIVE_TOGGLE_WRAPPER}>
           <div className="flex items-center gap-1.5">
             {autoSaveEnabled ? (

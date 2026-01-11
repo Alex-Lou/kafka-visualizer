@@ -66,6 +66,7 @@ export const healthApi = {
   getSimpleHealth: () => api.get('/health/simple'),
 };
 
+// Flow endpoints
 export const flowApi = {
   getAll: () => api.get('/flows'),
   getById: (id) => api.get(`/flows/${id}`),
@@ -74,6 +75,25 @@ export const flowApi = {
   update: (id, data) => api.put(`/flows/${id}`, data),
   updateLayout: (id, data) => api.put(`/flows/${id}/layout`, data),
   delete: (id) => api.delete(`/flows/${id}`),
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// CLEANUP API - Gestion des éléments orphelins
+// ═══════════════════════════════════════════════════════════════════════
+
+export const cleanupApi = {
+  /** Récupère la vue d'ensemble (connexions + topics orphelins) */
+  getOverview: () => api.get('/cleanup'),
+  
+  /** Compte le nombre total d'orphelins */
+  count: () => api.get('/cleanup/count'),
+  
+  /** Supprime les éléments sélectionnés */
+  deleteSelected: (connectionIds = [], topicIds = []) => 
+    api.delete('/cleanup', { data: { connectionIds, topicIds } }),
+  
+  /** Supprime TOUS les éléments orphelins */
+  deleteAll: () => api.delete('/cleanup/all'),
 };
 
 // Retention endpoints
@@ -111,7 +131,5 @@ export const retentionApi = {
   getJobLogs: (params) => api.get('/retention/jobs', { params }),
   getJobStats: () => api.get('/retention/jobs/stats'),
 };
-
-
 
 export default api;
