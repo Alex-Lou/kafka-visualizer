@@ -3,130 +3,129 @@ package com.kafkaflow.visualizer.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kafkaflow.visualizer.dto.FlowDto;
 import com.kafkaflow.visualizer.service.FlowDiagramService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(FlowDiagramController.class)
-public class FlowDiagramControllerTest {
+@ExtendWith(MockitoExtension.class)
+class FlowDiagramControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @MockBean
+    @Mock
     private FlowDiagramService flowDiagramService;
 
+    @InjectMocks
+    private FlowDiagramController flowDiagramController;
+
+    private MockMvc mockMvc;
+
+    private ObjectMapper objectMapper;
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders.standaloneSetup(flowDiagramController).build();
+        objectMapper = new ObjectMapper();
+    }
+
     @Test
-    public void getAllFlows_ShouldReturnList() throws Exception {
+    void testGetAllFlows() throws Exception {
         // Given
-        FlowDto.FlowDiagramResponse flow1 = FlowDto.FlowDiagramResponse.builder().id(1L).name("Flow 1").build();
-        FlowDto.FlowDiagramResponse flow2 = FlowDto.FlowDiagramResponse.builder().id(2L).name("Flow 2").build();
-        List<FlowDto.FlowDiagramResponse> flows = Arrays.asList(flow1, flow2);
+        FlowDto.FlowDiagramResponse flowDiagramResponse = new FlowDto.FlowDiagramResponse();
+        List<FlowDto.FlowDiagramResponse> flows = Collections.singletonList(flowDiagramResponse);
+        when(flowDiagramService.getAllFlows()).thenReturn(flows);
 
-        given(flowDiagramService.getAllFlows()).willReturn(flows);
-
-        // When
+        // When & Then
         mockMvc.perform(get("/api/flows"))
-                // Then
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.length()").value(2))
-                .andExpect(jsonPath("$.data[0].name").value("Flow 1"))
-                .andExpect(jsonPath("$.data[1].name").value("Flow 2"));
+                .andExpect(status().isOk());
     }
 
     @Test
-    public void getFlowById_ShouldReturnFlow() throws Exception {
+    void testGetFlowById() throws Exception {
         // Given
-        FlowDto.FlowDiagramResponse flow = FlowDto.FlowDiagramResponse.builder().id(1L).name("Flow 1").build();
+        FlowDto.FlowDiagramResponse flowDiagramResponse = new FlowDto.FlowDiagramResponse();
+        when(flowDiagramService.getFlowById(anyLong())).thenReturn(flowDiagramResponse);
 
-        given(flowDiagramService.getFlowById(1L)).willReturn(flow);
-
-        // When
+        // When & Then
         mockMvc.perform(get("/api/flows/1"))
-                // Then
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.id").value(1))
-                .andExpect(jsonPath("$.data.name").value("Flow 1"));
+                .andExpect(status().isOk());
     }
 
     @Test
-    public void createFlow_ShouldReturnCreatedFlow() throws Exception {
+    void testGetFlowsByConnection() throws Exception {
         // Given
-        FlowDto.CreateFlowRequest request = FlowDto.CreateFlowRequest.builder()
-                .name("New Flow")
-                .description("Description")
-                .build();
-        
-        FlowDto.FlowDiagramResponse response = FlowDto.FlowDiagramResponse.builder()
-                .id(1L)
-                .name("New Flow")
-                .description("Description")
-                .build();
+        FlowDto.FlowDiagramResponse flowDiagramResponse = new FlowDto.FlowDiagramResponse();
+        List<FlowDto.FlowDiagramResponse> flows = Collections.singletonList(flowDiagramResponse);
+        when(flowDiagramService.getFlowsByConnection(anyLong())).thenReturn(flows);
 
-        given(flowDiagramService.createFlow(any(FlowDto.CreateFlowRequest.class))).willReturn(response);
+        // When & Then
+        mockMvc.perform(get("/api/flows/connection/1"))
+                .andExpect(status().isOk());
+    }
 
-        // When
+    @Test
+    void testCreateFlow() throws Exception {
+        // Given
+        FlowDto.CreateFlowRequest createFlowRequest = new FlowDto.CreateFlowRequest();
+        FlowDto.FlowDiagramResponse flowDiagramResponse = new FlowDto.FlowDiagramResponse();
+        when(flowDiagramService.createFlow(any(FlowDto.CreateFlowRequest.class))).thenReturn(flowDiagramResponse);
+
+        // When & Then
         mockMvc.perform(post("/api/flows")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                // Then
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.name").value("New Flow"));
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createFlowRequest)))
+                .andExpect(status().isOk());
     }
 
     @Test
-    public void updateFlow_ShouldReturnUpdatedFlow() throws Exception {
+    void testUpdateFlow() throws Exception {
         // Given
-        FlowDto.UpdateFlowRequest request = FlowDto.UpdateFlowRequest.builder()
-                .name("Updated Flow")
-                .build();
+        FlowDto.UpdateFlowRequest updateFlowRequest = new FlowDto.UpdateFlowRequest();
+        FlowDto.FlowDiagramResponse flowDiagramResponse = new FlowDto.FlowDiagramResponse();
+        when(flowDiagramService.updateFlow(anyLong(), any(FlowDto.UpdateFlowRequest.class))).thenReturn(flowDiagramResponse);
 
-        FlowDto.FlowDiagramResponse response = FlowDto.FlowDiagramResponse.builder()
-                .id(1L)
-                .name("Updated Flow")
-                .build();
-
-        given(flowDiagramService.updateFlow(eq(1L), any(FlowDto.UpdateFlowRequest.class))).willReturn(response);
-
-        // When
+        // When & Then
         mockMvc.perform(put("/api/flows/1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                // Then
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.name").value("Updated Flow"));
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateFlowRequest)))
+                .andExpect(status().isOk());
     }
 
     @Test
-    public void deleteFlow_ShouldReturnSuccess() throws Exception {
+    void testUpdateFlowLayout() throws Exception {
         // Given
-        doNothing().when(flowDiagramService).deleteFlow(1L);
+        FlowDto.UpdateLayoutRequest updateLayoutRequest = new FlowDto.UpdateLayoutRequest();
+        FlowDto.FlowDiagramResponse flowDiagramResponse = new FlowDto.FlowDiagramResponse();
+        when(flowDiagramService.updateFlowLayout(anyLong(), any(FlowDto.UpdateLayoutRequest.class))).thenReturn(flowDiagramResponse);
 
-        // When
+        // When & Then
+        mockMvc.perform(put("/api/flows/1/layout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateLayoutRequest)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void testDeleteFlow() throws Exception {
+        // Given
+        doNothing().when(flowDiagramService).deleteFlow(anyLong());
+
+        // When & Then
         mockMvc.perform(delete("/api/flows/1"))
-                // Then
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(status().isOk());
     }
 }

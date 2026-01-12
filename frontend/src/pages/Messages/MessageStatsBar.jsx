@@ -39,7 +39,8 @@ export default function MessageStatsBar({ stats, selectedTopic }) {
   );
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 px-6 mb-6">
+    <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 px-6 mt-6 mb-6">
+
       {/* Total Messages */}
       <Card className="p-4 flex items-center justify-between bg-card border-border/50">
         <div>

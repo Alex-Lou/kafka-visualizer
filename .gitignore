@@ -103,6 +103,7 @@ lerna-debug.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*.local
 
 # Demo
 /demo/node_modules/
@@ -112,8 +113,48 @@ lerna-debug.log*
 
 # Docker
 *.pid
+docker-compose.override.yml
+docker-compose.local.yml
 
 # Database
 *.db
 *.sqlite
 *.sqlite3
+*.h2.db
+*.mv.db
+*.trace.db
+data/
+
+# Secrets & Certificates
+*.pem
+*.key
+*.p12
+*.jks
+secrets/
+
+# Local Spring profiles
+application-local.yml
+application-local.properties
+application-prod.yml
+application-prod.properties
+*.local.yml
+
+# Test & Coverage
+coverage/
+*.lcov
+.nyc_output/
+test-results/
+
+# Temp files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*.swo
+*~
+*.orig
+*.rej
+.cache/
+.parcel-cache/
+.eslintcache

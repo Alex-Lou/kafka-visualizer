@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface KafkaMessageRepository extends JpaRepository<KafkaMessage, Long> {
@@ -23,13 +24,13 @@ public interface KafkaMessageRepository extends JpaRepository<KafkaMessage, Long
     Page<KafkaMessage> findByTopicIdAndKeyContaining(Long topicId, String key, Pageable pageable);
 
     @Query("SELECT m FROM KafkaMessage m WHERE m.topic.id = :topicId " +
-           "AND (:key IS NULL OR m.key LIKE %:key%) " +
-           "AND (:valueContains IS NULL OR m.value LIKE %:valueContains%) " +
-           "AND (:fromDate IS NULL OR m.timestamp >= :fromDate) " +
-           "AND (:toDate IS NULL OR m.timestamp <= :toDate) " +
-           "AND (:direction IS NULL OR m.direction = :direction) " +
-           "AND (:status IS NULL OR m.status = :status) " +
-           "AND (:partition IS NULL OR m.partition = :partition)")
+            "AND (:key IS NULL OR m.key LIKE %:key%) " +
+            "AND (:valueContains IS NULL OR m.value LIKE %:valueContains%) " +
+            "AND (:fromDate IS NULL OR m.timestamp >= :fromDate) " +
+            "AND (:toDate IS NULL OR m.timestamp <= :toDate) " +
+            "AND (:direction IS NULL OR m.direction = :direction) " +
+            "AND (:status IS NULL OR m.status = :status) " +
+            "AND (:partition IS NULL OR m.partition = :partition)")
     Page<KafkaMessage> findByFilters(
             @Param("topicId") Long topicId,
             @Param("key") String key,
@@ -51,9 +52,9 @@ public interface KafkaMessageRepository extends JpaRepository<KafkaMessage, Long
     List<KafkaMessage> findTop100ByTopicIdOrderByTimestampDesc(Long topicId);
 
     @Query("SELECT FUNCTION('HOUR', m.timestamp) as hour, COUNT(m) as count " +
-           "FROM KafkaMessage m WHERE m.timestamp >= :since " +
-           "GROUP BY FUNCTION('HOUR', m.timestamp) " +
-           "ORDER BY hour")
+            "FROM KafkaMessage m WHERE m.timestamp >= :since " +
+            "GROUP BY FUNCTION('HOUR', m.timestamp) " +
+            "ORDER BY hour")
     List<Object[]> getMessageTrendsByHour(@Param("since") LocalDateTime since);
 
     @Modifying
@@ -90,11 +91,10 @@ public interface KafkaMessageRepository extends JpaRepository<KafkaMessage, Long
     @Query("SELECT MIN(m.timestamp) FROM KafkaMessage m WHERE m.topic.id = :topicId")
     LocalDateTime findOldestTimestampByTopicId(@Param("topicId") Long topicId);
 
+    // ✅ AJOUT: Dernier message d'un topic (pour live stats)
+    Optional<KafkaMessage> findFirstByTopicIdOrderByTimestampDesc(Long topicId);
+
     @Modifying
     @Query("DELETE FROM KafkaMessage m WHERE m.topic.id = :topicId")
     void deleteAllByTopicId(@Param("topicId") Long topicId);
-
-
 }
-
-

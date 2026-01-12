@@ -5,9 +5,9 @@ export const TOPICS = {
   FILTERS_GRID: 'flex flex-wrap items-center gap-4',
   SEARCH_WRAPPER: 'relative',
   SEARCH_ICON: 'absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground',
-  SEARCH_INPUT: 'w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary',
+  SEARCH_INPUT: 'w-full pl-10 pr-4 py-2 bg-background dark:bg-surface-800 border border-border rounded-lg text-foreground dark:text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary',
   
-  FILTER_SELECT: 'bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary',
+  FILTER_SELECT: 'bg-background dark:bg-surface-800 border border-border rounded-lg px-3 py-2 text-sm text-foreground dark:text-white focus:outline-none focus:ring-2 focus:ring-primary',
   FILTER_BUTTON: 'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
   FILTER_BUTTON_ACTIVE: 'bg-primary/10 text-primary',
   FILTER_BUTTON_INACTIVE: 'bg-muted text-muted-foreground hover:bg-muted/80',
@@ -30,7 +30,7 @@ export const TOPICS = {
 
   // Topics Grid
   TOPICS_GRID: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4',
-  TOPIC_CARD: 'bg-card border border-border rounded-lg group',
+  TOPIC_CARD: 'bg-card border border-border rounded-lg group cursor-pointer hover:shadow-lg transition-shadow',
   TOPIC_CARD_COLOR_BAR: 'h-1.5 rounded-t-lg',
   TOPIC_CARD_HEADER: 'flex items-center gap-3 p-4',
   TOPIC_CARD_ICON: 'w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0',

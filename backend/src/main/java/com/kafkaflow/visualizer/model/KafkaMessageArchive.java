@@ -39,19 +39,19 @@ public class KafkaMessageArchive {
     private String connectionName;
 
     @Column(name = "partition_num")
-    private Integer partitionNum;
+    private Integer partition;
 
     @Column(name = "offset_num")
-    private Long offsetNum;
+    private Long offset;
 
     @Column(name = "msg_key", length = 500)
-    private String msgKey;
+    private String messageKey;
 
     @Column(name = "msg_value", columnDefinition = "LONGTEXT")
-    private String msgValue;
+    private String messageValue;
 
     @Column(name = "timestamp", nullable = false)
-    private LocalDateTime timestamp;
+    private LocalDateTime originalTimestamp;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "headers_json", columnDefinition = "JSON")
@@ -89,22 +89,28 @@ public class KafkaMessageArchive {
     public static KafkaMessageArchive fromMessage(KafkaMessage message, String topicName,
                                                   Long connectionId, String connectionName,
                                                   ArchiveReason reason) {
+        // Calculer la taille si pas déjà définie ou si égale à 0
+        Integer size = message.getValueSize();
+        if (size == null || size == 0) {
+            size = message.getValue() != null ? message.getValue().length() : 0;
+        }
+
         return KafkaMessageArchive.builder()
                 .originalId(message.getId())
                 .topicId(message.getTopic().getId())
                 .topicName(topicName)
                 .connectionId(connectionId)
                 .connectionName(connectionName)
-                .partitionNum(message.getPartition())
-                .offsetNum(message.getOffset())
-                .msgKey(message.getKey())
-                .msgValue(message.getValue())
-                .timestamp(message.getTimestamp())
+                .partition(message.getPartition())
+                .offset(message.getOffset())
+                .messageKey(message.getKey())
+                .messageValue(message.getValue())
+                .originalTimestamp(message.getTimestamp())
                 .headers(message.getHeadersAsMap())
                 .messageType(message.getMessageType() != null ?
                         MessageType.valueOf(message.getMessageType().name()) : MessageType.NORMAL)
                 .contentType(message.getContentType())
-                .valueSize(message.getValueSize())
+                .valueSize(size)
                 .archivedAt(LocalDateTime.now())
                 .archiveReason(reason)
                 .build();

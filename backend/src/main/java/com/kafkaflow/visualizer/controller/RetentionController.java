@@ -185,10 +185,23 @@ public class RetentionController {
             long hotCount = messageRepository.countByTopicId(topicId);
             long archiveCount = archiveRepository.countByTopicId(topicId);
             Long archiveSize = archiveRepository.getTotalSizeByTopicId(topicId);
-            
-            Map<String, Object> archiveStats = null;
+
+            Object archiveStatsRaw = null;
+            LocalDateTime oldestArchive = null;
+            LocalDateTime newestArchive = null;
+
             try {
-                archiveStats = archiveRepository.getArchiveStatsByTopicId(topicId);
+                archiveStatsRaw = archiveRepository.getArchiveStatsByTopicId(topicId);
+
+                if (archiveStatsRaw != null && archiveStatsRaw instanceof Object[]) {
+                    Object[] statsArray = (Object[]) archiveStatsRaw;
+                    // statsArray[0] = topicId, [1] = topicName, [2] = messageCount,
+                    // [3] = totalSize, [4] = oldestMessage, [5] = newestMessage
+                    if (statsArray.length >= 6) {
+                        oldestArchive = (LocalDateTime) statsArray[4];
+                        newestArchive = (LocalDateTime) statsArray[5];
+                    }
+                }
             } catch (Exception e) {
                 log.warn("Failed to get archive stats for topic {}: {}", topicId, e.getMessage());
             }
@@ -196,18 +209,6 @@ public class RetentionController {
             RetentionPolicy policy = policyRepository
                     .findEffectivePolicy(topicId, topic.getConnection().getId())
                     .orElse(null);
-
-            LocalDateTime oldestArchive = null;
-            LocalDateTime newestArchive = null;
-
-            if (archiveStats != null) {
-                try {
-                    oldestArchive = (LocalDateTime) archiveStats.get("oldestMessage");
-                    newestArchive = (LocalDateTime) archiveStats.get("newestMessage");
-                } catch (Exception e) {
-                    log.warn("Error parsing archive stats dates: {}", e.getMessage());
-                }
-            }
 
             return ResponseEntity.ok(StorageUsageResponse.builder()
                     .topicId(topic.getId())
@@ -276,7 +277,7 @@ public class RetentionController {
                 "messagesArchived", archived
         ));
     }
-    
+
     @PostMapping("/actions/archive-messages")
     public ResponseEntity<Map<String, Object>> archiveMessages(@RequestBody List<Long> messageIds) {
         int archived = retentionService.archiveSpecificMessages(messageIds);
@@ -310,7 +311,8 @@ public class RetentionController {
         if (topicId != null && search != null && !search.isEmpty()) {
             archives = archiveRepository.searchByTopicAndContent(topicId, search, pageable);
         } else if (topicId != null) {
-            archives = archiveRepository.findByTopicIdOrderByTimestampDesc(topicId, pageable);
+            archives = archiveRepository.findByTopicIdOrderByOriginalTimestampDesc(topicId, pageable);
+
         } else {
             archives = archiveRepository.findAll(pageable);
         }
@@ -553,11 +555,11 @@ public class RetentionController {
                 .topicName(archive.getTopicName())
                 .connectionId(archive.getConnectionId())
                 .connectionName(archive.getConnectionName())
-                .partitionNum(archive.getPartitionNum())
-                .offsetNum(archive.getOffsetNum())
-                .msgKey(archive.getMsgKey())
-                .msgValue(archive.getMsgValue())
-                .timestamp(archive.getTimestamp())
+                .partitionNum(archive.getPartition())
+                .offsetNum(archive.getOffset())
+                .msgKey(archive.getMessageKey())
+                .msgValue(archive.getMessageValue())
+                .timestamp(archive.getOriginalTimestamp())
                 .headers(archive.getHeaders())
                 .messageType(archive.getMessageType().name())
                 .contentType(archive.getContentType())

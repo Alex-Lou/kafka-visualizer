@@ -26,26 +26,45 @@ public class DashboardControllerTest {
     public void getDashboardStats_ShouldReturnStats() throws Exception {
         // Given
         DashboardStats stats = DashboardStats.builder()
+                // Connections
                 .totalConnections(5)
                 .activeConnections(3)
+                // Topics
                 .totalTopics(10)
                 .monitoredTopics(8)
-                .totalMessages(1000L)
+                // Consumers
+                .activeConsumers(8)
+                .runningThreads(8)
+                // Messages - Temps réel
+                .messagesPerSecond(12.5)
+                .messagesLastMinute(750L)
+                .messagesLastHour(45000L)
+                // Messages - Historique
                 .messagesLast24h(500L)
+                .totalMessagesStored(1000L)
                 .build();
 
         given(dashboardService.getDashboardStats()).willReturn(stats);
 
-        // When
+        // When & Then
         mockMvc.perform(get("/api/dashboard/stats"))
-                // Then
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
+                // Connections
                 .andExpect(jsonPath("$.data.totalConnections").value(5))
                 .andExpect(jsonPath("$.data.activeConnections").value(3))
+                // Topics
                 .andExpect(jsonPath("$.data.totalTopics").value(10))
                 .andExpect(jsonPath("$.data.monitoredTopics").value(8))
-                .andExpect(jsonPath("$.data.totalMessages").value(1000))
-                .andExpect(jsonPath("$.data.messagesLast24h").value(500));
+                // Consumers
+                .andExpect(jsonPath("$.data.activeConsumers").value(8))
+                .andExpect(jsonPath("$.data.runningThreads").value(8))
+                // Messages - Temps réel
+                .andExpect(jsonPath("$.data.messagesPerSecond").value(12.5))
+                .andExpect(jsonPath("$.data.messagesLastMinute").value(750))
+                .andExpect(jsonPath("$.data.messagesLastHour").value(45000))
+                // Messages - Historique
+                .andExpect(jsonPath("$.data.messagesLast24h").value(500))
+                .andExpect(jsonPath("$.data.totalMessagesStored").value(1000));
     }
 }

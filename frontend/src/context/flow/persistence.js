@@ -23,7 +23,6 @@ export const createExpiringStorage = () => ({
       // Vérifie si expiré (10 min)
       if (parsed.timestamp && now - parsed.timestamp > EXPIRATION_TIME) {
         localStorage.removeItem(name);
-        console.log('[FlowStore] Session expirée, localStorage vidé');
         return null;
       }
 
@@ -65,7 +64,6 @@ export const initSessionMarker = () => {
         const parsed = JSON.parse(stored);
         if (parsed.timestamp && Date.now() - parsed.timestamp > EXPIRATION_TIME) {
           localStorage.removeItem(STORAGE_KEY);
-          console.log('[FlowStore] Données expirées supprimées');
         }
       } catch (e) {
         localStorage.removeItem(STORAGE_KEY);
@@ -90,7 +88,6 @@ export const startAutoSave = (callback) => {
       autoSaveCallback();
     }
   }, AUTO_SAVE_INTERVAL);
-  console.log('[FlowStore] Auto-save démarré (toutes les 30s)');
 };
 
 export const stopAutoSave = () => {
@@ -98,7 +95,6 @@ export const stopAutoSave = () => {
     clearInterval(autoSaveInterval);
     autoSaveInterval = null;
     autoSaveCallback = null;
-    console.log('[FlowStore] Auto-save arrêté');
   }
 };
 
