@@ -132,4 +132,38 @@ export const retentionApi = {
   getJobStats: () => api.get('/retention/jobs/stats'),
 };
 
+export const archiveApi = {
+  // Get archives with filters
+  getAll: (params) => api.get('/archives', { params }),
+  
+  // Get single archive (full content)
+  getById: (id) => api.get(`/archives/${id}`),
+  
+  // Get statistics
+  getStats: () => api.get('/archives/stats'),
+  
+  // Get filter options (for dropdowns)
+  getFilterOptions: () => api.get('/archives/filters'),
+  
+  // Export archives
+  exportJson: (params) => api.get('/archives/export/json', { 
+    params, 
+    responseType: 'blob' 
+  }),
+  exportCsv: (params) => api.get('/archives/export/csv', { 
+    params, 
+    responseType: 'blob' 
+  }),
+  exportCustom: (data) => api.post('/archives/export', data, { 
+    responseType: 'blob' 
+  }),
+  
+  // Delete archives
+  delete: (id) => api.delete(`/archives/${id}`),
+  deleteBulk: (data) => api.delete('/archives', { data }),
+  
+  // Restore archives
+  restore: (data) => api.post('/archives/restore', data),
+};
+
 export default api;

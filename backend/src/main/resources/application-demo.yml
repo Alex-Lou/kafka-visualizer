@@ -1,0 +1,67 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:yucast_demo;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        show_sql: false
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: yucast-demo-group
+      auto-offset-reset: earliest
+    producer:
+      retries: 0
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: demo@example.com
+    password: demo-password
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+server:
+  port: 8080
+
+cors:
+  allowed-origins: "*"
+
+app:
+  jwt-secret: demo-secret-key-for-presentation-only-not-secure
+  kafka:
+    message-retention-hours: 1
+    max-messages-per-topic: 1000
+
+application:
+  title: Yucast - Demo Mode
+  version: 1.0.0-DEMO
+
+logging:
+  level:
+    root: WARN
+    com.kafkaflow.visualizer: INFO
+    com.zaxxer.hikari: ERROR
+    org.hibernate: ERROR
+    org.springframework.web: WARN
+    org.apache.kafka: WARN
+  pattern:
+    console: "%d{HH:mm:ss} %-5level %-30logger{30} : %msg%n"

@@ -92,27 +92,36 @@ export default function MessagesPage() {
     fetchAllTopics();
   }, [fetchAllTopics]);
 
-  // Handle URL parameters for initial selection
+  // Handle URL parameters for initial selection (only if specified in URL)
   useEffect(() => {
     if (topics.length > 0) {
       const topicIdParam = searchParams.get('topicId');
       const connectionIdParam = searchParams.get('connectionId');
 
+      // Seulement si un paramètre URL existe
       if (topicIdParam) {
         const topicId = parseInt(topicIdParam, 10);
         const topic = topics.find(t => t.id === topicId);
         if (topic) {
           selectTopic(topic);
+          return; // Sortir pour éviter la réinitialisation
         }
       } else if (connectionIdParam) {
         const connectionId = parseInt(connectionIdParam, 10);
         const firstTopicForConnection = topics.find(t => t.connectionId === connectionId);
         if (firstTopicForConnection) {
           selectTopic(firstTopicForConnection);
+          return; // Sortir pour éviter la réinitialisation
         }
       }
+      
+      // Si aucun paramètre URL, réinitialiser
+      selectTopic(null);
     }
-  }, [searchParams, topics, selectTopic]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topics.length]);
+
+
 
   useEffect(() => {
     const connectWS = async () => {

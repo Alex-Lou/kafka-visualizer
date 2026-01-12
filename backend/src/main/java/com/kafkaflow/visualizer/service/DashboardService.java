@@ -4,6 +4,8 @@ import com.kafkaflow.visualizer.dto.KafkaDto.*;
 import com.kafkaflow.visualizer.repository.KafkaConnectionRepository;
 import com.kafkaflow.visualizer.repository.KafkaMessageRepository;
 import com.kafkaflow.visualizer.repository.KafkaTopicRepository;
+import com.kafkaflow.visualizer.service.kafka.KafkaConsumerManager;
+import com.kafkaflow.visualizer.service.metrics.ThroughputTracker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,10 +23,64 @@ public class DashboardService {
     private final KafkaConnectionRepository connectionRepository;
     private final KafkaTopicRepository topicRepository;
     private final KafkaMessageRepository messageRepository;
+    private final ThroughputTracker throughputTracker;
+    private final KafkaConsumerManager consumerManager;
 
     @Transactional(readOnly = true)
     public DashboardStats getDashboardStats() {
-        LocalDateTime last24Hours = LocalDateTime.now().minusHours(24);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime lastHour = now.minusHours(1);
+        LocalDateTime last24Hours = now.minusHours(24);
+
+        // ─────────────────────────────────────────────────────────────────────
+        // MÉTRIQUES TEMPS RÉEL (depuis ThroughputTracker - en mémoire)
+        // ─────────────────────────────────────────────────────────────────────
+
+        double messagesPerSecond = roundTwoDecimals(throughputTracker.getGlobalThroughput());
+        long messagesLastMinute = throughputTracker.getGlobalMessagesLastMinute();
+
+        // Pour lastHour: utiliser la mémoire si disponible, sinon DB
+        long messagesLastHour;
+        if (throughputTracker.isHourlyTrackingEnabled()) {
+            long fromMemory = throughputTracker.getGlobalMessagesLastHour();
+            messagesLastHour = fromMemory >= 0 ? fromMemory : messageRepository.countMessagesSince(lastHour);
+        } else {
+            messagesLastHour = messageRepository.countMessagesSince(lastHour);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // MÉTRIQUES HISTORIQUES (depuis DB)
+        // ─────────────────────────────────────────────────────────────────────
+
+        long messagesLast24h = messageRepository.countMessagesSince(last24Hours);
+        long totalMessagesStored = messageRepository.count();
+
+        // ─────────────────────────────────────────────────────────────────────
+        // CONNECTIONS
+        // ─────────────────────────────────────────────────────────────────────
+
+        int totalConnections = (int) connectionRepository.count();
+        int activeConnections = connectionRepository.countActiveConnections();
+
+        // ─────────────────────────────────────────────────────────────────────
+        // TOPICS
+        // ─────────────────────────────────────────────────────────────────────
+
+        int totalTopics = (int) topicRepository.count();
+        int monitoredTopics = topicRepository.countMonitoredTopics();
+
+        // ─────────────────────────────────────────────────────────────────────
+        // CONSUMERS
+        // ─────────────────────────────────────────────────────────────────────
+
+        int activeConsumers = consumerManager.getActiveConsumerCount();
+        int runningThreads = (int) consumerManager.getConsumerStatus().values().stream()
+                .filter("RUNNING"::equals)
+                .count();
+
+        // ─────────────────────────────────────────────────────────────────────
+        // DÉTAILS (top topics + trends)
+        // ─────────────────────────────────────────────────────────────────────
 
         List<TopicStats> topTopics = topicRepository.findTopByMessageCount(5).stream()
                 .map(topic -> TopicStats.builder()
@@ -41,15 +97,34 @@ public class DashboardService {
                         .build())
                 .collect(Collectors.toList());
 
+        // ─────────────────────────────────────────────────────────────────────
+        // BUILD RESPONSE
+        // ─────────────────────────────────────────────────────────────────────
+
         return DashboardStats.builder()
-                .totalConnections((int) connectionRepository.count())
-                .activeConnections(connectionRepository.countActiveConnections())
-                .totalTopics((int) topicRepository.count())
-                .monitoredTopics(topicRepository.countMonitoredTopics())
-                .totalMessages(messageRepository.count())
-                .messagesLast24h(messageRepository.countMessagesSince(last24Hours))
+                // Connections
+                .totalConnections(totalConnections)
+                .activeConnections(activeConnections)
+                // Topics
+                .totalTopics(totalTopics)
+                .monitoredTopics(monitoredTopics)
+                // Consumers
+                .activeConsumers(activeConsumers)
+                .runningThreads(runningThreads)
+                // Messages - Temps réel
+                .messagesPerSecond(messagesPerSecond)
+                .messagesLastMinute(messagesLastMinute)
+                .messagesLastHour(messagesLastHour)
+                // Messages - Historique
+                .messagesLast24h(messagesLast24h)
+                .totalMessagesStored(totalMessagesStored)
+                // Détails
                 .topTopics(topTopics)
                 .messageTrends(messageTrends)
                 .build();
+    }
+
+    private double roundTwoDecimals(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 }

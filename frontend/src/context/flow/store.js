@@ -46,7 +46,6 @@ export const useFlowStore = create(
           historyStack: [],
           redoStack: [],
         });
-        console.log('[FlowStore] Session locale vidée');
       },
     }),
     {
@@ -69,7 +68,6 @@ export const useFlowStore = create(
             state.setAutoSaveEnabled(true);
           }, 1000);
         }
-        console.log('[FlowStore] État restauré depuis localStorage');
       },
     }
   )

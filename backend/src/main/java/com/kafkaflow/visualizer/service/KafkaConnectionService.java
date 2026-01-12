@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.ListTopicsResult;
+import org.apache.kafka.clients.admin.TopicDescription;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -85,7 +86,7 @@ public class KafkaConnectionService {
         connection.setSecurityProtocol(request.getSecurityProtocol());
         connection.setSaslMechanism(request.getSaslMechanism());
         connection.setSaslUsername(request.getSaslUsername());
-        
+
         if (request.getSaslPassword() != null && !request.getSaslPassword().isBlank()) {
             connection.setSaslPassword(request.getSaslPassword());
         }
@@ -126,7 +127,9 @@ public class KafkaConnectionService {
             connectionRepository.save(connection);
 
             log.info("Successfully connected to Kafka: {}", connection.getName());
-            autoSyncTopics(connection, topicNames);
+
+            // Auto-sync avec métadonnées (partitions, replication factor)
+            autoSyncTopicsWithMetadata(connection, adminClient, topicNames);
 
         } catch (Exception e) {
             log.error("Failed to connect to Kafka: {}", connection.getName(), e);
@@ -137,37 +140,102 @@ public class KafkaConnectionService {
         return toConnectionResponse(connectionRepository.save(connection));
     }
 
-    private void autoSyncTopics(KafkaConnection connection, Set<String> topicNames) {
+    /**
+     * Auto-sync des topics avec récupération des métadonnées (partitions, replication factor)
+     */
+    private void autoSyncTopicsWithMetadata(KafkaConnection connection, AdminClient adminClient, Set<String> topicNames) {
         try {
-            log.debug("Auto-syncing {} topics for connection: {}", topicNames.size(), connection.getName());
-
+            // Filtrer les topics internes
+            Set<String> userTopics = new HashSet<>();
             for (String topicName : topicNames) {
-                if (topicName.startsWith("_")) {
-                    continue;
-                }
-
-                if (!topicRepository.existsByConnectionIdAndName(connection.getId(), topicName)) {
-                    KafkaTopic topic = KafkaTopic.builder()
-                            .name(topicName)
-                            .connection(connection)
-                            .monitored(true)
-                            .messageCount(0L)
-                            .build();
-                    topicRepository.save(topic);
-                    log.debug("Auto-created and monitoring topic: {}", topicName);
-                } else {
-                    topicRepository.findByConnectionIdAndName(connection.getId(), topicName)
-                            .ifPresent(topic -> {
-                                if (!topic.isMonitored()) {
-                                    topic.setMonitored(true);
-                                    topicRepository.save(topic);
-                                    log.debug("Enabled monitoring for existing topic: {}", topicName);
-                                }
-                            });
+                if (!topicName.startsWith("_")) {
+                    userTopics.add(topicName);
                 }
             }
+
+            if (userTopics.isEmpty()) {
+                log.debug("No user topics to sync for connection: {}", connection.getName());
+                return;
+            }
+
+            log.debug("Auto-syncing {} topics with metadata for connection: {}", userTopics.size(), connection.getName());
+
+            // Récupérer les descriptions des topics (partitions, replication factor)
+            Map<String, TopicDescription> descriptions = new HashMap<>();
+            try {
+                descriptions = adminClient.describeTopics(userTopics).allTopicNames().get(15, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                log.warn("Failed to describe topics, syncing without metadata: {}", e.getMessage());
+                // Fallback: sync sans métadonnées
+                autoSyncTopicsLegacy(connection, userTopics);
+                return;
+            }
+
+            // Créer ou mettre à jour chaque topic avec ses métadonnées
+            for (String topicName : userTopics) {
+                TopicDescription desc = descriptions.get(topicName);
+                Integer partitions = desc != null ? desc.partitions().size() : null;
+                Short replicationFactor = desc != null && !desc.partitions().isEmpty()
+                        ? (short) desc.partitions().get(0).replicas().size()
+                        : null;
+
+                KafkaTopic topic = topicRepository.findByConnectionIdAndName(connection.getId(), topicName)
+                        .orElseGet(() -> KafkaTopic.builder()
+                                .name(topicName)
+                                .connection(connection)
+                                .monitored(true)
+                                .messageCount(0L)
+                                .build());
+
+                // Mettre à jour les métadonnées
+                topic.setPartitions(partitions);
+                topic.setReplicationFactor(replicationFactor);
+
+                // Activer le monitoring si nouveau topic
+                if (topic.getId() == null) {
+                    topic.setMonitored(true);
+                    log.debug("Auto-created topic with metadata: {} (partitions={}, rf={})",
+                            topicName, partitions, replicationFactor);
+                } else {
+                    log.debug("Updated topic metadata: {} (partitions={}, rf={})",
+                            topicName, partitions, replicationFactor);
+                }
+
+                topicRepository.save(topic);
+            }
+
+            log.info("Successfully synced {} topics with metadata for connection: {}",
+                    userTopics.size(), connection.getName());
+
         } catch (Exception e) {
-            log.error("Error auto-syncing topics for connection: {}", connection.getName(), e);
+            log.error("Error auto-syncing topics with metadata for connection: {}", connection.getName(), e);
+        }
+    }
+
+    /**
+     * Fallback: sync des topics sans métadonnées (ancienne méthode)
+     */
+    private void autoSyncTopicsLegacy(KafkaConnection connection, Set<String> topicNames) {
+        for (String topicName : topicNames) {
+            if (!topicRepository.existsByConnectionIdAndName(connection.getId(), topicName)) {
+                KafkaTopic topic = KafkaTopic.builder()
+                        .name(topicName)
+                        .connection(connection)
+                        .monitored(true)
+                        .messageCount(0L)
+                        .build();
+                topicRepository.save(topic);
+                log.debug("Auto-created topic (no metadata): {}", topicName);
+            } else {
+                topicRepository.findByConnectionIdAndName(connection.getId(), topicName)
+                        .ifPresent(topic -> {
+                            if (!topic.isMonitored()) {
+                                topic.setMonitored(true);
+                                topicRepository.save(topic);
+                                log.debug("Enabled monitoring for existing topic: {}", topicName);
+                            }
+                        });
+            }
         }
     }
 
@@ -183,6 +251,57 @@ public class KafkaConnectionService {
         } catch (Exception e) {
             log.error("Failed to discover topics for connection: {}", connectionId, e);
             throw new KafkaConnectionException("Failed to discover topics: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Refresh les métadonnées de tous les topics d'une connexion
+     */
+    @Transactional
+    public void refreshTopicMetadata(Long connectionId) {
+        KafkaConnection connection = connectionRepository.findById(connectionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Connection", connectionId));
+
+        try {
+            AdminClient adminClient = getOrCreateAdminClient(connection);
+            Set<String> topicNames = adminClient.listTopics().names().get(10, TimeUnit.SECONDS);
+
+            // Filtrer les topics internes
+            Set<String> userTopics = new HashSet<>();
+            for (String topicName : topicNames) {
+                if (!topicName.startsWith("_")) {
+                    userTopics.add(topicName);
+                }
+            }
+
+            if (userTopics.isEmpty()) {
+                return;
+            }
+
+            // Récupérer les descriptions
+            Map<String, TopicDescription> descriptions = adminClient.describeTopics(userTopics)
+                    .allTopicNames().get(15, TimeUnit.SECONDS);
+
+            // Mettre à jour les topics existants
+            for (Map.Entry<String, TopicDescription> entry : descriptions.entrySet()) {
+                String topicName = entry.getKey();
+                TopicDescription desc = entry.getValue();
+
+                topicRepository.findByConnectionIdAndName(connectionId, topicName)
+                        .ifPresent(topic -> {
+                            topic.setPartitions(desc.partitions().size());
+                            if (!desc.partitions().isEmpty()) {
+                                topic.setReplicationFactor((short) desc.partitions().get(0).replicas().size());
+                            }
+                            topicRepository.save(topic);
+                        });
+            }
+
+            log.info("Refreshed metadata for {} topics on connection: {}", userTopics.size(), connection.getName());
+
+        } catch (Exception e) {
+            log.error("Failed to refresh topic metadata for connection: {}", connectionId, e);
+            throw new KafkaConnectionException("Failed to refresh topic metadata: " + e.getMessage(), e);
         }
     }
 
@@ -233,7 +352,6 @@ public class KafkaConnectionService {
 
     @Transactional
     public ConnectionResponse createErrorTestConnection() {
-        // Supprime l'ancienne connexion de test si elle existe
         connectionRepository.findByName("Test Error Connection")
                 .ifPresent(conn -> {
                     closeAdminClient(conn.getId());
@@ -242,7 +360,7 @@ public class KafkaConnectionService {
 
         KafkaConnection connection = KafkaConnection.builder()
                 .name("Test Error Connection")
-                .bootstrapServers("localhost:19999") // Port invalide
+                .bootstrapServers("localhost:19999")
                 .description("Test connection for error handling visualization")
                 .defaultConnection(false)
                 .status(ConnectionStatus.DISCONNECTED)
@@ -250,8 +368,6 @@ public class KafkaConnectionService {
 
         connection = connectionRepository.save(connection);
 
-        // Test automatiquement pour déclencher l'erreur
         return testConnection(connection.getId());
     }
-
 }

@@ -57,7 +57,7 @@ public class KafkaDto {
         private String name;
         private Long connectionId;
         private String connectionName;
-        private String connectionStatus;  // ✅ NOUVEAU - Status de la connexion (pour orphelins)
+        private String connectionStatus;
         private Integer partitions;
         private Short replicationFactor;
         private String description;
@@ -148,17 +148,57 @@ public class KafkaDto {
         private LocalDateTime updatedAt;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // DASHBOARD STATS - Avec métriques temps réel
+    // ═══════════════════════════════════════════════════════════════════════
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
     public static class DashboardStats {
+        // ─────────────────────────────────────────────────────────────────────
+        // CONNECTIONS
+        // ─────────────────────────────────────────────────────────────────────
         private int totalConnections;
         private int activeConnections;
+
+        // ─────────────────────────────────────────────────────────────────────
+        // TOPICS
+        // ─────────────────────────────────────────────────────────────────────
         private int totalTopics;
         private int monitoredTopics;
-        private long totalMessages;
+
+        // ─────────────────────────────────────────────────────────────────────
+        // CONSUMERS
+        // ─────────────────────────────────────────────────────────────────────
+        private int activeConsumers;
+        private int runningThreads;
+
+        // ─────────────────────────────────────────────────────────────────────
+        // MESSAGES - TEMPS RÉEL (fenêtre glissante en mémoire)
+        // ─────────────────────────────────────────────────────────────────────
+        /** Messages par seconde - agrégé tous topics monitorés */
+        private double messagesPerSecond;
+
+        /** Messages reçus dans la dernière minute (fenêtre 60s) */
+        private long messagesLastMinute;
+
+        /** Messages reçus dans la dernière heure (query DB) */
+        private long messagesLastHour;
+
+        // ─────────────────────────────────────────────────────────────────────
+        // MESSAGES - HISTORIQUE (depuis DB)
+        // ─────────────────────────────────────────────────────────────────────
+        /** Messages des dernières 24h */
         private long messagesLast24h;
+
+        /** Total de messages en base (pour info/debug) */
+        private long totalMessagesStored;
+
+        // ─────────────────────────────────────────────────────────────────────
+        // DÉTAILS
+        // ─────────────────────────────────────────────────────────────────────
         private List<TopicStats> topTopics;
         private List<MessageTrend> messageTrends;
     }
@@ -233,7 +273,7 @@ public class KafkaDto {
     @AllArgsConstructor
     @Builder
     public static class HealthStatus {
-        private String status;  // UP, DOWN, DEGRADED
+        private String status;
         private LocalDateTime timestamp;
         private String uptime;
         private String version;
@@ -248,7 +288,7 @@ public class KafkaDto {
     @AllArgsConstructor
     @Builder
     public static class ComponentHealth {
-        private String status;  // UP, DOWN, DEGRADED
+        private String status;
         private String message;
         private Map<String, Object> details;
     }
@@ -260,22 +300,17 @@ public class KafkaDto {
     public static class TopicLiveStatsResponse {
         private Long topicId;
         private String topicName;
-        // Compteurs
-        private Long totalMessages;          // Total historique (depuis création)
-        private Long messagesLast24h;        // Messages des dernières 24h
-        private Long messagesLastHour;       // Messages de la dernière heure
-        private Long errorCount;             // Erreurs dernières 24h
-        private Long warningCount;           // Warnings dernières 24h
-        // Real-time
-        private Double throughputPerSecond;  // Messages/seconde (real-time)
-        private Double throughputPerMinute;  // Messages/minute (calculé)
-        // Storage
+        private Long totalMessages;
+        private Long messagesLast24h;
+        private Long messagesLastHour;
+        private Long errorCount;
+        private Long warningCount;
+        private Double throughputPerSecond;
+        private Double throughputPerMinute;
         private Long totalSizeBytes;
         private String totalSizeFormatted;
-        // Timestamps
         private LocalDateTime lastMessageAt;
         private LocalDateTime oldestMessageAt;
-        // Status
         private Boolean isMonitored;
         private Boolean consumerActive;
     }
@@ -284,14 +319,8 @@ public class KafkaDto {
     // ORPHAN TOPICS DTOs
     // ═══════════════════════════════════════════════════════════════════════
 
-    /**
-     * Request pour supprimer des topics orphelins sélectionnés
-     */
     public record OrphanDeleteRequest(List<Long> ids) {}
 
-    /**
-     * Response après suppression de topics orphelins
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

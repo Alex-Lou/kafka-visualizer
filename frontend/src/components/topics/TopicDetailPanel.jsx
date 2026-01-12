@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { X, MessageSquare, Activity, Clock, Database, Edit3, Trash2, Save, Palette } from 'lucide-react';
+import { X, MessageSquare, Activity, Clock, Database, Edit3, Trash2, Save, Palette, Zap, TrendingUp } from 'lucide-react';
 import { Button, Badge } from '@components/common';
 import { useTopicStore } from '@context/store/index';
+import useTopicMetrics from '@hooks/useTopicMetrics';
 import { topicApi } from '@services/api';
+
 
 // Predefined colors for topics
 const TOPIC_COLORS = [
@@ -18,10 +20,12 @@ const TOPIC_COLORS = [
   { name: 'Teal', value: '#14B8A6' },
 ];
 
+
 // CSS for slide animation - add this to your global CSS or tailwind config
 const slideInStyle = {
   animation: 'slideInRight 0.3s ease-out',
 };
+
 
 export default function TopicDetailPanel({ topic, connection, onClose, onUpdate, onDelete }) {
   const { updateTopic } = useTopicStore();
@@ -29,6 +33,30 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // REALTIME METRICS
+  // ═══════════════════════════════════════════════════════════════════════
+  const {
+    messageCount: realtimeMessageCount,
+    throughputPerSecond,
+    throughputPerMinute,
+    messagesLastMinute,
+    lastMessageAt: realtimeLastMessageAt,
+    consumerActive,
+    isConnected: wsConnected,
+    isActive: realtimeIsActive,
+  } = useTopicMetrics(topic?.id, !!topic);
+
+  // Safe fallback values to prevent undefined errors
+  const safeThroughputPerSecond = throughputPerSecond || 0;
+  const safeThroughputPerMinute = throughputPerMinute || 0;
+  const safeMessagesLastMinute = messagesLastMinute || 0;
+
+  // Utiliser les valeurs temps réel si disponibles, sinon fallback sur les props
+  const displayMessageCount = realtimeMessageCount || topic?.messageCount || 0;
+  const displayLastMessageAt = realtimeLastMessageAt || topic?.lastMessageAt;
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -36,6 +64,7 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
     color: topic?.color || '#3B82F6',
     monitored: topic?.monitored || false,
   });
+
 
   // Reset form when topic changes
   useEffect(() => {
@@ -50,7 +79,9 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
     }
   }, [topic?.id]);
 
+
   if (!topic) return null;
+
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -69,6 +100,7 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
     }
   };
 
+
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
@@ -81,6 +113,7 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
       setIsDeleting(false);
     }
   };
+
 
   const handleToggleMonitored = async () => {
     const newMonitored = !editForm.monitored;
@@ -98,8 +131,10 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
     }
   };
 
-  const isActive = (topic.messageCount || 0) > 0;
-  const isEmpty = (topic.messageCount || 0) === 0;
+
+  const isActive = realtimeIsActive || displayMessageCount > 0;
+  const isEmpty = displayMessageCount === 0;
+
 
   return (
     <>
@@ -130,35 +165,95 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
               <p className="text-sm text-surface-500">{connection?.name}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-surface-500" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Live indicator */}
+            {wsConnected && (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-success-100 dark:bg-success-900/30 rounded-full">
+                <span className="w-2 h-2 bg-success-500 rounded-full animate-pulse" />
+                <span className="text-xs font-medium text-success-600 dark:text-success-400">Live</span>
+              </div>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-surface-500" />
+            </button>
+          </div>
         </div>
+
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Status Badges */}
           <div className="flex flex-wrap gap-2">
             {editForm.monitored && <Badge variant="success">Monitored</Badge>}
+            {consumerActive && <Badge variant="success">Consumer Active</Badge>}
             {isActive && <Badge variant="accent">Active</Badge>}
-            {isEmpty && <Badge variant="neutral">Empty</Badge>}
+            {isEmpty && !isActive && <Badge variant="neutral">Empty</Badge>}
             <Badge variant="secondary">{connection?.bootstrapServers}</Badge>
           </div>
 
+
+          {/* Realtime Stats Banner */}
+          {safeThroughputPerSecond > 0 && (
+            <div className="bg-gradient-to-r from-success-500/10 to-accent-500/10 border border-success-500/20 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-success-500" />
+                  <span className="font-medium text-surface-900 dark:text-white">Receiving messages</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-success-600 dark:text-success-400">
+                    {safeThroughputPerSecond.toFixed(1)}
+                    <span className="text-sm font-normal ml-1">/sec</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+
           {/* Stats Grid */}
           <div className="grid grid-cols-2 gap-4">
+            {/* Messages - temps réel */}
             <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
               <div className="flex items-center gap-2 text-surface-500 mb-1">
                 <Activity className="w-4 h-4" />
                 <span className="text-xs">Messages</span>
               </div>
               <p className="text-2xl font-bold text-surface-900 dark:text-white">
-                {topic.messageCount?.toLocaleString() || 0}
+                {displayMessageCount.toLocaleString()}
               </p>
             </div>
+
+
+            {/* Throughput - temps réel */}
+            <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-surface-500 mb-1">
+                <Zap className="w-4 h-4" />
+                <span className="text-xs">Throughput</span>
+              </div>
+              <p className={`text-2xl font-bold ${safeThroughputPerSecond > 0 ? 'text-success-600 dark:text-success-400' : 'text-surface-900 dark:text-white'}`}>
+                {safeThroughputPerSecond.toFixed(1)}
+                <span className="text-sm font-normal text-surface-500 ml-1">/sec</span>
+              </p>
+            </div>
+
+
+            {/* Messages Last Minute - temps réel */}
+            <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-surface-500 mb-1">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-xs">Last Minute</span>
+              </div>
+              <p className={`text-2xl font-bold ${safeMessagesLastMinute > 0 ? 'text-accent-600 dark:text-accent-400' : 'text-surface-900 dark:text-white'}`}>
+                {safeMessagesLastMinute.toLocaleString()}
+              </p>
+            </div>
+
+
+            {/* Partitions */}
             <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
               <div className="flex items-center gap-2 text-surface-500 mb-1">
                 <Database className="w-4 h-4" />
@@ -168,17 +263,23 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
                 {topic.partitions || '-'}
               </p>
             </div>
+
+
+            {/* Last Message - temps réel */}
             <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
               <div className="flex items-center gap-2 text-surface-500 mb-1">
                 <Clock className="w-4 h-4" />
                 <span className="text-xs">Last Message</span>
               </div>
               <p className="text-sm font-medium text-surface-900 dark:text-white">
-                {topic.lastMessageAt 
-                  ? new Date(topic.lastMessageAt).toLocaleString() 
+                {displayLastMessageAt 
+                  ? new Date(displayLastMessageAt).toLocaleString() 
                   : 'Never'}
               </p>
             </div>
+
+
+            {/* Replication Factor */}
             <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
               <div className="flex items-center gap-2 text-surface-500 mb-1">
                 <span className="text-xs">Replication</span>
@@ -189,6 +290,7 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
             </div>
           </div>
 
+
           {/* Monitoring Toggle */}
           <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
             <div className="flex items-center justify-between">
@@ -196,7 +298,9 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
                 <h3 className="font-medium text-surface-900 dark:text-white">Monitoring</h3>
                 <p className="text-sm text-surface-500">
                   {editForm.monitored 
-                    ? 'Receiving real-time messages' 
+                    ? consumerActive 
+                      ? 'Consumer active, receiving messages' 
+                      : 'Monitoring enabled, waiting for messages'
                     : 'Not monitoring this topic'}
                 </p>
               </div>
@@ -214,6 +318,7 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
               </button>
             </div>
           </div>
+
 
           {/* Description */}
           <div>
@@ -246,6 +351,7 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
             )}
           </div>
 
+
           {/* Color Picker */}
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -274,6 +380,7 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
             </div>
           </div>
 
+
           {/* Topic Info */}
           <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4 space-y-2">
             <h3 className="text-sm font-medium text-surface-700 dark:text-surface-300 mb-3">
@@ -295,6 +402,7 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
             </div>
           </div>
         </div>
+
 
         {/* Footer Actions */}
         <div className="px-6 py-4 border-t border-surface-200 dark:border-surface-800 bg-surface-50 dark:bg-surface-850">

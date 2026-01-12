@@ -1,5 +1,6 @@
 package com.kafkaflow.visualizer.websocket;
 
+import com.kafkaflow.visualizer.dto.KafkaDto.DashboardStats;
 import com.kafkaflow.visualizer.dto.KafkaDto.MessageResponse;
 import com.kafkaflow.visualizer.dto.KafkaDto.WebSocketMessage;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,10 @@ public class WebSocketService {
 
     private final SimpMessagingTemplate messagingTemplate;
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // MESSAGES
+    // ═══════════════════════════════════════════════════════════════════════
+
     public void broadcastNewMessage(MessageResponse message) {
         WebSocketMessage wsMessage = WebSocketMessage.builder()
                 .type("NEW_MESSAGE")
@@ -29,6 +34,10 @@ public class WebSocketService {
         log.debug("Broadcasted new message for topic: {}", message.getTopicName());
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONNECTIONS
+    // ═══════════════════════════════════════════════════════════════════════
+
     public void broadcastConnectionStatus(Long connectionId, String status) {
         WebSocketMessage wsMessage = WebSocketMessage.builder()
                 .type("CONNECTION_STATUS")
@@ -39,12 +48,16 @@ public class WebSocketService {
         messagingTemplate.convertAndSend("/topic/connections", wsMessage);
     }
 
-    // ✅ ANCIEN - gardé pour compatibilité
+    // ═══════════════════════════════════════════════════════════════════════
+    // TOPICS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /** Ancien format - gardé pour compatibilité */
     public void broadcastTopicUpdate(Long topicId, String topicName, long messageCount) {
         broadcastTopicUpdate(topicId, topicName, messageCount, 0.0);
     }
 
-    // ✅ NOUVEAU - avec throughput
+    /** Nouveau format avec throughput */
     public void broadcastTopicUpdate(Long topicId, String topicName, long messageCount, double throughput) {
         WebSocketMessage wsMessage = WebSocketMessage.builder()
                 .type("TOPIC_UPDATE")
@@ -56,7 +69,7 @@ public class WebSocketService {
         log.debug("Broadcasted topic update: {} - count: {}, throughput: {}/s", topicName, messageCount, throughput);
     }
 
-    // ✅ NOUVEAU - broadcast des métriques complètes
+    /** Métriques complètes d'un topic */
     public void broadcastTopicMetrics(TopicMetricsPayload metrics) {
         WebSocketMessage wsMessage = WebSocketMessage.builder()
                 .type("TOPIC_METRICS")
@@ -68,6 +81,10 @@ public class WebSocketService {
         messagingTemplate.convertAndSend("/topic/metrics/" + metrics.topicId(), wsMessage);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // FLOWS
+    // ═══════════════════════════════════════════════════════════════════════
+
     public void broadcastFlowUpdate(Long diagramId, Object flowData) {
         WebSocketMessage wsMessage = WebSocketMessage.builder()
                 .type("FLOW_UPDATE")
@@ -78,7 +95,48 @@ public class WebSocketService {
         messagingTemplate.convertAndSend("/topic/flow/" + diagramId, wsMessage);
     }
 
-    private record ConnectionStatusPayload(Long connectionId, String status) {}
+    // ═══════════════════════════════════════════════════════════════════════
+    // DASHBOARD - TEMPS RÉEL
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Broadcast les stats complètes du dashboard (toutes les 5s)
+     * Inclut: connections, topics, consumers, messages historiques + temps réel
+     */
+    public void broadcastDashboardStats(DashboardStats stats) {
+        WebSocketMessage wsMessage = WebSocketMessage.builder()
+                .type("DASHBOARD_STATS")
+                .payload(stats)
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        messagingTemplate.convertAndSend("/topic/dashboard/stats", wsMessage);
+        log.trace("Broadcasted dashboard stats - msg/s: {}", stats.getMessagesPerSecond());
+    }
+
+    /**
+     * Broadcast uniquement les métriques temps réel (toutes les 1s)
+     * Plus léger, pour le throughput en temps réel du dashboard
+     */
+    public void broadcastRealTimeMetrics(RealTimeMetricsPayload payload) {
+        WebSocketMessage wsMessage = WebSocketMessage.builder()
+                .type("REALTIME_METRICS")
+                .payload(payload)
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        messagingTemplate.convertAndSend("/topic/dashboard/realtime", wsMessage);
+        log.trace("Broadcasted realtime metrics - msg/s: {}", payload.messagesPerSecond());
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PAYLOADS (Records)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private record ConnectionStatusPayload(
+            Long connectionId,
+            String status
+    ) {}
 
     public record TopicUpdatePayload(
             Long topicId,
@@ -97,5 +155,11 @@ public class WebSocketService {
             long messagesLastMinute,
             LocalDateTime lastMessageAt,
             boolean consumerActive
+    ) {}
+
+    public record RealTimeMetricsPayload(
+            double messagesPerSecond,
+            long messagesLastMinute,
+            long messagesLastHour
     ) {}
 }

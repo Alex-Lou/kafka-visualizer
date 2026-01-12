@@ -45,7 +45,7 @@ class MessageRetentionServiceTest {
         // Given
         KafkaConnection connection = KafkaConnection.builder().id(1L).build();
         KafkaTopic topic = KafkaTopic.builder().id(10L).connection(connection).build();
-        
+
         RetentionPolicy policy = RetentionPolicy.builder()
                 .hotRetentionHours(24)
                 .archiveEnabled(true)
@@ -62,7 +62,7 @@ class MessageRetentionServiceTest {
         given(policyRepository.findEffectivePolicy(10L, 1L)).willReturn(Optional.of(policy));
         given(messageRepository.findMessagesOlderThan(eq(10L), any(LocalDateTime.class), any(Pageable.class)))
                 .willReturn(List.of(message));
-        
+
         given(jobLogRepository.save(any(RetentionJobLog.class))).willAnswer(inv -> inv.getArgument(0));
 
         // When
@@ -95,7 +95,7 @@ class MessageRetentionServiceTest {
         given(policyRepository.findEffectivePolicy(10L, 1L)).willReturn(Optional.of(policy));
         given(messageRepository.findMessagesOlderThan(eq(10L), any(LocalDateTime.class), any(Pageable.class)))
                 .willReturn(List.of(message));
-        
+
         given(jobLogRepository.save(any(RetentionJobLog.class))).willAnswer(inv -> inv.getArgument(0));
 
         // When
@@ -121,8 +121,8 @@ class MessageRetentionServiceTest {
 
         given(topicRepository.findAll()).willReturn(List.of(topic));
         given(policyRepository.findEffectivePolicy(10L, 1L)).willReturn(Optional.of(policy));
-        given(archiveRepository.deleteExpiredArchives(eq(10L), any(LocalDateTime.class))).willReturn(5);
-        
+        given(archiveRepository.deleteExpiredArchives(any(LocalDateTime.class))).willReturn(5);
+
         given(jobLogRepository.save(any(RetentionJobLog.class))).willAnswer(inv -> inv.getArgument(0));
 
         // When
@@ -130,7 +130,7 @@ class MessageRetentionServiceTest {
 
         // Then
         assertThat(log.getMessagesDeleted()).isEqualTo(5);
-        then(archiveRepository).should().deleteExpiredArchives(eq(10L), any(LocalDateTime.class));
+        then(archiveRepository).should().deleteExpiredArchives(any(LocalDateTime.class));
     }
 
     @Test
@@ -148,7 +148,7 @@ class MessageRetentionServiceTest {
         then(messageRepository).should().deleteByTopicId(topicId);
         then(archiveRepository).should().deleteByTopicId(topicId);
     }
-    
+
     @Test
     void bookmarkMessage_ShouldUpdateStatus() {
         // Given

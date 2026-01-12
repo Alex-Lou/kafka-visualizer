@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  Archive,
 } from 'lucide-react';
 import { useUIStore, useConnectionStore } from '@context/store/index';
 import { SIDEBAR } from '@constants/styles/sidebar';
@@ -19,6 +20,7 @@ const navItems = [
   { path: '/topics', icon: MessageSquare, label: 'Topics' },
   { path: '/messages', icon: FileText, label: 'Messages' },
   { path: '/flow', icon: GitBranch, label: 'Flow View' },
+  { path: '/archives', icon: Archive, label: 'Archives' },
 ];
 
 const bottomNavItems = [
@@ -62,7 +64,7 @@ export default function Sidebar() {
           <div className={SIDEBAR.LOGO_ICON}>
             <Zap className="w-5 h-5" />
           </div>
-          {!sidebarCollapsed && <span className={SIDEBAR.LOGO_TEXT}>KafkaFlow</span>}
+          {!sidebarCollapsed && <span className={SIDEBAR.LOGO_TEXT}>Yucast</span>}
         </div>
         {!sidebarCollapsed && (
           <button onClick={toggleSidebar} className={SIDEBAR.TOGGLE_BTN}>
