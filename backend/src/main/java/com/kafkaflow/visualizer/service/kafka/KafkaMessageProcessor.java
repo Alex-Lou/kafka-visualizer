@@ -1,7 +1,7 @@
 package com.kafkaflow.visualizer.service.kafka;
 
 import com.kafkaflow.visualizer.model.KafkaMessage;
-import com.kafkaflow.visualizer.service.KafkaTopicService;
+import com.kafkaflow.visualizer.service.kafkatopic.KafkaTopicMessageService;
 import com.kafkaflow.visualizer.service.metrics.MetricsBroadcaster;
 import com.kafkaflow.visualizer.service.metrics.ThroughputTracker;
 import com.kafkaflow.visualizer.websocket.WebSocketService;
@@ -22,7 +22,7 @@ import java.util.Map;
 @Slf4j
 public class KafkaMessageProcessor {
 
-    private final KafkaTopicService topicService;
+    private final KafkaTopicMessageService messageService;  // ← Changé
     private final WebSocketService webSocketService;
     private final ThroughputTracker throughputTracker;
     private final MetricsBroadcaster metricsBroadcaster;
@@ -34,10 +34,8 @@ public class KafkaMessageProcessor {
     public int processRecords(Long topicId, String topicName, ConsumerRecords<String, String> records) {
         int recordCount = records.count();
 
-        // Enregistrer pour le throughput
         throughputTracker.recordMessages(topicId, recordCount);
 
-        // Traiter chaque message
         int errors = 0;
         for (ConsumerRecord<String, String> record : records) {
             if (!processRecord(topicId, record)) {
@@ -45,10 +43,8 @@ public class KafkaMessageProcessor {
             }
         }
 
-        // Log si erreurs multiples
         errorHandler.handleBatchProcessingErrors(topicName, errors);
 
-        // Broadcast updates
         metricsBroadcaster.broadcastTopicUpdate(topicId);
         metricsBroadcaster.broadcastFlowUpdates(topicId);
 
@@ -62,7 +58,7 @@ public class KafkaMessageProcessor {
         try {
             Map<String, String> headers = extractHeaders(record);
 
-            var messageResponse = topicService.saveMessage(
+            var messageResponse = messageService.saveMessage(  // ← Changé
                     topicId,
                     KafkaMessage.MessageDirection.INBOUND,
                     record.key(),

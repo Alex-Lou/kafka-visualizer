@@ -1,55 +1,38 @@
 package com.kafkaflow.visualizer.dto;
 
+import jakarta.validation.constraints.*;
+import lombok.*;
+
 import java.util.List;
 import java.util.Map;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class EmailReportRequest {
 
+    @NotBlank(message = "Recipient email is required")
+    @Email(message = "Invalid email format")
     private String recipient;
+
+    @NotBlank(message = "Subject is required")
+    @Size(max = 200, message = "Subject must be less than 200 characters")
     private String subject;
+
     private String body;
+
+    @NotEmpty(message = "At least one message is required")
     private List<Map<String, Object>> messages;
-    private String format;
 
-    // Getters and Setters
+    @Builder.Default
+    private ReportFormat format = ReportFormat.CSV;
 
-    public String getRecipient() {
-        return recipient;
-    }
+    public enum ReportFormat {
+        CSV, JSON, TXT, PDF;
 
-    public void setRecipient(String recipient) {
-        this.recipient = recipient;
-    }
-
-    public String getSubject() {
-        return subject;
-    }
-
-    public void setSubject(String subject) {
-        this.subject = subject;
-    }
-
-    public String getBody() {
-        return body;
-    }
-
-    public void setBody(String body) {
-        this.body = body;
-    }
-
-    public List<Map<String, Object>> getMessages() {
-        return messages;
-    }
-
-    public void setMessages(List<Map<String, Object>> messages) {
-        this.messages = messages;
-    }
-
-    public String getFormat() {
-        return format;
-    }
-
-    public void setFormat(String format) {
-        this.format = format;
+        public String getExtension() {
+            return name().toLowerCase();
+        }
     }
 }

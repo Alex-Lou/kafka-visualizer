@@ -3,14 +3,19 @@ package com.kafkaflow.visualizer.dto;
 import com.kafkaflow.visualizer.model.KafkaConnection.ConnectionStatus;
 import com.kafkaflow.visualizer.model.KafkaMessage.MessageDirection;
 import com.kafkaflow.visualizer.model.KafkaMessage.MessageStatus;
+import jakarta.validation.constraints.*;
 import lombok.*;
-import jakarta.validation.constraints.NotBlank;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 public class KafkaDto {
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONNECTION
+    // ═══════════════════════════════════════════════════════════════════════
 
     @Data
     @NoArgsConstructor
@@ -48,6 +53,10 @@ public class KafkaDto {
         private int topicCount;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // TOPIC
+    // ═══════════════════════════════════════════════════════════════════════
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -81,6 +90,55 @@ public class KafkaDto {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
+    public static class TopicCreateRequest {
+        @NotBlank(message = "Topic name is required")
+        private String name;
+
+        @NotNull @Min(1)
+        private Integer partitions;
+
+        @NotNull @Min(1)
+        private Short replicationFactor;
+
+        private String description;
+        private String color;
+
+        @Builder.Default
+        private boolean monitored = true;
+
+        private Map<String, String> configs;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class TopicLiveStatsResponse {
+        private Long topicId;
+        private String topicName;
+        private Long totalMessages;
+        private Long messagesLast24h;
+        private Long messagesLastHour;
+        private Long errorCount;
+        private Long warningCount;
+        private Double throughputPerSecond;
+        private Double throughputPerMinute;
+        private Long totalSizeBytes;
+        private String totalSizeFormatted;
+        private LocalDateTime lastMessageAt;
+        private LocalDateTime oldestMessageAt;
+        private Boolean isMonitored;
+        private Boolean consumerActive;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MESSAGE
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class MessageResponse {
         private Long id;
         private String topicName;
@@ -104,14 +162,27 @@ public class KafkaDto {
         private Long topicId;
         private String key;
         private String valueContains;
+
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
         private LocalDateTime fromDate;
+
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
         private LocalDateTime toDate;
+
         private MessageDirection direction;
         private MessageStatus status;
         private Integer partition;
-        private int page;
-        private int size;
+
+        @Builder.Default @Min(0)
+        private int page = 0;
+
+        @Builder.Default @Min(1) @Max(200)
+        private int size = 50;
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FLOW DIAGRAM
+    // ═══════════════════════════════════════════════════════════════════════
 
     @Data
     @NoArgsConstructor
@@ -149,7 +220,7 @@ public class KafkaDto {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // DASHBOARD STATS - Avec métriques temps réel
+    // DASHBOARD
     // ═══════════════════════════════════════════════════════════════════════
 
     @Data
@@ -157,48 +228,17 @@ public class KafkaDto {
     @AllArgsConstructor
     @Builder
     public static class DashboardStats {
-        // ─────────────────────────────────────────────────────────────────────
-        // CONNECTIONS
-        // ─────────────────────────────────────────────────────────────────────
         private int totalConnections;
         private int activeConnections;
-
-        // ─────────────────────────────────────────────────────────────────────
-        // TOPICS
-        // ─────────────────────────────────────────────────────────────────────
         private int totalTopics;
         private int monitoredTopics;
-
-        // ─────────────────────────────────────────────────────────────────────
-        // CONSUMERS
-        // ─────────────────────────────────────────────────────────────────────
         private int activeConsumers;
         private int runningThreads;
-
-        // ─────────────────────────────────────────────────────────────────────
-        // MESSAGES - TEMPS RÉEL (fenêtre glissante en mémoire)
-        // ─────────────────────────────────────────────────────────────────────
-        /** Messages par seconde - agrégé tous topics monitorés */
         private double messagesPerSecond;
-
-        /** Messages reçus dans la dernière minute (fenêtre 60s) */
         private long messagesLastMinute;
-
-        /** Messages reçus dans la dernière heure (query DB) */
         private long messagesLastHour;
-
-        // ─────────────────────────────────────────────────────────────────────
-        // MESSAGES - HISTORIQUE (depuis DB)
-        // ─────────────────────────────────────────────────────────────────────
-        /** Messages des dernières 24h */
         private long messagesLast24h;
-
-        /** Total de messages en base (pour info/debug) */
         private long totalMessagesStored;
-
-        // ─────────────────────────────────────────────────────────────────────
-        // DÉTAILS
-        // ─────────────────────────────────────────────────────────────────────
         private List<TopicStats> topTopics;
         private List<MessageTrend> messageTrends;
     }
@@ -221,6 +261,10 @@ public class KafkaDto {
         private String hour;
         private long count;
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SYSTEM
+    // ═══════════════════════════════════════════════════════════════════════
 
     @Data
     @NoArgsConstructor
@@ -293,30 +337,8 @@ public class KafkaDto {
         private Map<String, Object> details;
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class TopicLiveStatsResponse {
-        private Long topicId;
-        private String topicName;
-        private Long totalMessages;
-        private Long messagesLast24h;
-        private Long messagesLastHour;
-        private Long errorCount;
-        private Long warningCount;
-        private Double throughputPerSecond;
-        private Double throughputPerMinute;
-        private Long totalSizeBytes;
-        private String totalSizeFormatted;
-        private LocalDateTime lastMessageAt;
-        private LocalDateTime oldestMessageAt;
-        private Boolean isMonitored;
-        private Boolean consumerActive;
-    }
-
     // ═══════════════════════════════════════════════════════════════════════
-    // ORPHAN TOPICS DTOs
+    // ORPHAN TOPICS
     // ═══════════════════════════════════════════════════════════════════════
 
     public record OrphanDeleteRequest(List<Long> ids) {}

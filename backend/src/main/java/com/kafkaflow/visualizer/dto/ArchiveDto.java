@@ -2,7 +2,9 @@ package com.kafkaflow.visualizer.dto;
 
 import com.kafkaflow.visualizer.model.KafkaMessageArchive.ArchiveReason;
 import com.kafkaflow.visualizer.model.KafkaMessageArchive.MessageType;
+import jakarta.validation.constraints.*;
 import lombok.*;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,7 +28,7 @@ public class ArchiveDto {
         private String connectionName;
         private String messageKey;
         private String messageValue;
-        private String messageValuePreview; // Truncated for list view
+        private String messageValuePreview;
         private Integer partition;
         private Long offset;
         private LocalDateTime originalTimestamp;
@@ -53,20 +55,37 @@ public class ArchiveDto {
         private String topicName;
         private String messageKey;
         private String valueContains;
+
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
         private LocalDateTime fromDate;
+
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
         private LocalDateTime toDate;
+
         private MessageType messageType;
         private ArchiveReason archiveReason;
         private String contentType;
-        private String searchQuery; // Full text search
-        private int page;
-        private int size;
-        private String sortBy;
-        private String sortDirection;
+        private String searchQuery;
+
+        // Defaults + validation
+        @Builder.Default
+        @Min(0)
+        private int page = 0;
+
+        @Builder.Default
+        @Min(1) @Max(100)
+        private int size = 20;
+
+        @Builder.Default
+        private String sortBy = "originalTimestamp";
+
+        @Builder.Default
+        @Pattern(regexp = "^(asc|desc)$", message = "Must be 'asc' or 'desc'")
+        private String sortDirection = "desc";
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // STATS
+    // STATS (inchangé - déjà bien)
     // ═══════════════════════════════════════════════════════════════════════
 
     @Data
@@ -118,14 +137,33 @@ public class ArchiveDto {
     @AllArgsConstructor
     @Builder
     public static class ExportRequest {
-        private List<Long> ids; // Specific IDs to export
-        private Long topicId; // Or all from a topic
+        private List<Long> ids;
+        private Long topicId;
+
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
         private LocalDateTime fromDate;
+
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
         private LocalDateTime toDate;
+
+        @NotNull(message = "Export format is required")
         private ExportFormat format;
-        private boolean includeHeaders;
-        private boolean includeMetadata;
-        private boolean compress; // Gzip compression
+
+        @Builder.Default
+        private boolean includeHeaders = true;
+
+        @Builder.Default
+        private boolean includeMetadata = true;
+
+        private boolean compress;
+
+        // Validation custom : au moins un critère de sélection
+        @AssertTrue(message = "Must specify ids, topicId, or date range")
+        private boolean isValidSelection() {
+            return (ids != null && !ids.isEmpty())
+                    || topicId != null
+                    || (fromDate != null && toDate != null);
+        }
     }
 
     public enum ExportFormat {
@@ -154,9 +192,20 @@ public class ArchiveDto {
     @Builder
     public static class BulkDeleteRequest {
         private List<Long> ids;
-        private Long topicId; // Delete all from topic
-        private Long connectionId; // Delete all from connection
-        private LocalDateTime olderThan; // Delete older than date
+        private Long topicId;
+        private Long connectionId;
+
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+        private LocalDateTime olderThan;
+
+        // Sécurité : empêcher suppression accidentelle de tout
+        @AssertTrue(message = "Must specify at least one deletion criteria")
+        private boolean isValidRequest() {
+            return (ids != null && !ids.isEmpty())
+                    || topicId != null
+                    || connectionId != null
+                    || olderThan != null;
+        }
     }
 
     @Data
@@ -169,7 +218,7 @@ public class ArchiveDto {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // RESTORE (from archive to active)
+    // RESTORE
     // ═══════════════════════════════════════════════════════════════════════
 
     @Data
@@ -177,8 +226,11 @@ public class ArchiveDto {
     @AllArgsConstructor
     @Builder
     public static class RestoreRequest {
+        @NotEmpty(message = "At least one archive ID is required")
         private List<Long> ids;
-        private boolean deleteAfterRestore;
+
+        @Builder.Default
+        private boolean deleteAfterRestore = true;
     }
 
     @Data
@@ -192,7 +244,7 @@ public class ArchiveDto {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // FILTER OPTIONS (for dropdowns)
+    // FILTER OPTIONS (inchangé)
     // ═══════════════════════════════════════════════════════════════════════
 
     @Data
@@ -205,5 +257,36 @@ public class ArchiveDto {
         private List<String> contentTypes;
         private List<MessageType> messageTypes;
         private List<ArchiveReason> archiveReasons;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ExportQuickRequest {
+        private List<Long> ids;
+        private Long topicId;
+
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+        private LocalDateTime fromDate;
+
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+        private LocalDateTime toDate;
+
+        @Builder.Default
+        private boolean compress = false;
+
+        public ExportRequest toExportRequest(ExportFormat format, boolean includeMetadata) {
+            return ExportRequest.builder()
+                    .ids(ids)
+                    .topicId(topicId)
+                    .fromDate(fromDate)
+                    .toDate(toDate)
+                    .format(format)
+                    .includeHeaders(true)
+                    .includeMetadata(includeMetadata)
+                    .compress(compress)
+                    .build();
+        }
     }
 }
