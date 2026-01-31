@@ -73,28 +73,45 @@ public interface KafkaMessageRepository extends JpaRepository<KafkaMessage, Long
     @Query("SELECT m FROM KafkaMessage m WHERE m.topic.id = :topicId AND m.timestamp < :before AND m.isBookmarked = false")
     List<KafkaMessage> findMessagesOlderThan(@Param("topicId") Long topicId, @Param("before") LocalDateTime before, Pageable pageable);
 
-    // Compte les messages après une date
     long countByTopicIdAndTimestampAfter(Long topicId, LocalDateTime timestamp);
 
-    // Compte les messages par type après une date
     long countByTopicIdAndMessageTypeAndTimestampAfter(
             Long topicId,
             KafkaMessage.MessageType messageType,
             LocalDateTime timestamp
     );
 
-    // Taille totale des messages d'un topic
     @Query("SELECT COALESCE(SUM(m.valueSize), 0) FROM KafkaMessage m WHERE m.topic.id = :topicId")
     Long getTotalSizeByTopicId(@Param("topicId") Long topicId);
 
-    // Plus ancien message d'un topic
     @Query("SELECT MIN(m.timestamp) FROM KafkaMessage m WHERE m.topic.id = :topicId")
     LocalDateTime findOldestTimestampByTopicId(@Param("topicId") Long topicId);
 
-    // ✅ AJOUT: Dernier message d'un topic (pour live stats)
     Optional<KafkaMessage> findFirstByTopicIdOrderByTimestampDesc(Long topicId);
 
     @Modifying
     @Query("DELETE FROM KafkaMessage m WHERE m.topic.id = :topicId")
     void deleteAllByTopicId(@Param("topicId") Long topicId);
+
+    // =========================================================================
+    // RETENTION SERVICES - Messages à archiver
+    // =========================================================================
+
+    @Query("SELECT m FROM KafkaMessage m WHERE m.topic.id = :topicId " +
+            "AND m.timestamp < :cutoff " +
+            "AND (:includeBookmarked = true OR m.isBookmarked = false) " +
+            "ORDER BY m.timestamp ASC")
+    List<KafkaMessage> findMessagesToArchive(
+            @Param("topicId") Long topicId,
+            @Param("cutoff") LocalDateTime cutoff,
+            @Param("includeBookmarked") boolean includeBookmarked,
+            Pageable pageable);
+
+    @Query("SELECT m FROM KafkaMessage m WHERE m.topic.id = :topicId " +
+            "AND m.timestamp < :before " +
+            "ORDER BY m.timestamp ASC")
+    List<KafkaMessage> findByTopicIdAndTimestampBefore(
+            @Param("topicId") Long topicId,
+            @Param("before") LocalDateTime before,
+            Pageable pageable);
 }

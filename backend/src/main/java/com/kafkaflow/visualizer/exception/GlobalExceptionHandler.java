@@ -1,7 +1,11 @@
 package com.kafkaflow.visualizer.exception;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.kafkaflow.visualizer.dto.ErrorResponse;
+import com.kafkaflow.visualizer.service.kafka.KafkaErrorHandler;
+import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.LazyInitializationException;
 import org.springframework.dao.DataAccessException;
@@ -15,8 +19,11 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.time.LocalDateTime;
 
 @RestControllerAdvice
+@RequiredArgsConstructor  // ✅ Injection du KafkaErrorHandler
 @Slf4j
 public class GlobalExceptionHandler {
+
+    private final KafkaErrorHandler kafkaErrorHandler;  // ✅ Injecté
 
     // ═══════════════════════════════════════════════════════════════════════
     // CUSTOM APP EXCEPTIONS
@@ -40,10 +47,29 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), ex.getErrorCode().getCode(), HttpStatus.CONFLICT, request);
     }
 
+    // ✅ AMÉLIORÉ - Utilise KafkaErrorHandler pour messages propres
     @ExceptionHandler(KafkaConnectionException.class)
     public ResponseEntity<ErrorResponse> handleKafkaConnectionException(KafkaConnectionException ex, HttpServletRequest request) {
-        log.error("🔌 Kafka connection failed: {}", ex.getMessage());
-        return buildErrorResponse(ex.getMessage(), ex.getErrorCode().getCode(), HttpStatus.BAD_REQUEST, request);
+        // ✅ Extraire message propre via KafkaErrorHandler
+        String cleanMessage = kafkaErrorHandler.extractCleanMessage(ex);
+        String errorType = kafkaErrorHandler.getErrorType(ex);
+
+        // ✅ Log structuré
+        log.error("🔌 Kafka connection failed");
+        log.error("   └─ Error: {}", cleanMessage);
+        log.error("   └─ Type: {}", errorType);
+
+        // Stack trace en DEBUG seulement
+        if (log.isDebugEnabled()) {
+            log.debug("   └─ Full error:", ex);
+        }
+
+        return buildErrorResponse(
+                cleanMessage,  // ✅ Message user-friendly
+                ex.getErrorCode().getCode(),
+                HttpStatus.BAD_REQUEST,
+                request
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -180,5 +206,31 @@ public class GlobalExceptionHandler {
         if (message.contains("Data too long")) return "Data exceeds field size limit";
 
         return message.length() > 100 ? message.substring(0, 100) + "..." : message;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+// MAIL EXCEPTIONS
+// ═══════════════════════════════════════════════════════════════════════
+
+    @ExceptionHandler(MessagingException.class)
+    public ResponseEntity<ErrorResponse> handleMessagingException(MessagingException ex, HttpServletRequest request) {
+        log.error("📧 Email sending failed: {}", ex.getMessage());
+        return buildErrorResponse(
+                "Failed to send email",
+                "EMAIL_SEND_ERROR",
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                request
+        );
+    }
+
+    @ExceptionHandler(JsonProcessingException.class)
+    public ResponseEntity<ErrorResponse> handleJsonProcessingException(JsonProcessingException ex, HttpServletRequest request) {
+        log.error("📄 JSON conversion failed: {}", ex.getMessage());
+        return buildErrorResponse(
+                "Failed to generate JSON report",
+                "JSON_CONVERSION_ERROR",
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                request
+        );
     }
 }

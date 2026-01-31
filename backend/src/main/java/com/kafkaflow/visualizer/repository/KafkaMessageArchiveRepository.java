@@ -1,5 +1,6 @@
 package com.kafkaflow.visualizer.repository;
 
+import com.kafkaflow.visualizer.model.KafkaMessage;
 import com.kafkaflow.visualizer.model.KafkaMessageArchive;
 import com.kafkaflow.visualizer.model.KafkaMessageArchive.ArchiveReason;
 import com.kafkaflow.visualizer.model.KafkaMessageArchive.MessageType;
@@ -166,7 +167,7 @@ public interface KafkaMessageArchiveRepository extends JpaRepository<KafkaMessag
     // EXPORT HELPERS
     // ═══════════════════════════════════════════════════════════════════════
 
-    @Query("SELECT a FROM KafkaMessageArchive a WHERE a.id IN :ids ORDER BY a.originalTimestamp DESC")
+    @Query("SELECT a FROM KafkaMessageArchive a WHERE a.id IN :ids ORDER BY a.originalTimestamp DESC LIMIT 10000")
     List<KafkaMessageArchive> findByIdsOrdered(@Param("ids") List<Long> ids);
 
     @Query("SELECT a FROM KafkaMessageArchive a WHERE " +
@@ -192,4 +193,5 @@ public interface KafkaMessageArchiveRepository extends JpaRepository<KafkaMessag
 
     @Query("SELECT DISTINCT a.contentType FROM KafkaMessageArchive a WHERE a.contentType IS NOT NULL ORDER BY a.contentType")
     List<String> findDistinctContentTypes();
+
 }

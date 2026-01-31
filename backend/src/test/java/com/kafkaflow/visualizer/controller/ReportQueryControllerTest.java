@@ -2,7 +2,8 @@ package com.kafkaflow.visualizer.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kafkaflow.visualizer.dto.KafkaDto.MessageResponse;
-import com.kafkaflow.visualizer.service.KafkaTopicService;
+import com.kafkaflow.visualizer.dto.ReportQueryRequest;
+import com.kafkaflow.visualizer.service.kafkatopic.KafkaTopicMessageService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -29,26 +30,40 @@ public class ReportQueryControllerTest {
     private ObjectMapper objectMapper;
 
     @MockBean
-    private KafkaTopicService topicService;
+    private KafkaTopicMessageService messageService;
 
     @Test
     public void getMessagesForReport_ShouldReturnMessages() throws Exception {
         // Given
-        ReportQueryController.ReportQueryRequest request = new ReportQueryController.ReportQueryRequest();
-        request.setTopicIds(Collections.singletonList(1L));
+        ReportQueryRequest request = ReportQueryRequest.builder()
+                .topicIds(List.of(1L))
+                .build();
 
         MessageResponse msg = MessageResponse.builder().id(1L).value("test").build();
-        List<MessageResponse> messages = Collections.singletonList(msg);
+        List<MessageResponse> messages = List.of(msg);
 
-        given(topicService.getMessagesForReport(anyList())).willReturn(messages);
+        given(messageService.getMessagesForReport(anyList())).willReturn(messages);
 
-        // When
+        // When & Then
         mockMvc.perform(post("/api/report-query/messages")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                // Then
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].value").value("test"));
+    }
+
+    @Test
+    public void getMessagesForReport_ShouldReturn400_WhenNoTopicIds() throws Exception {
+        // Given
+        ReportQueryRequest request = ReportQueryRequest.builder()
+                .topicIds(Collections.emptyList())
+                .build();
+
+        // When & Then
+        mockMvc.perform(post("/api/report-query/messages")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
     }
 }

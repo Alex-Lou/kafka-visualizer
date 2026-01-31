@@ -24,10 +24,10 @@ public class StartupLogger {
     private final KafkaConnectionRepository connectionRepository;
     private final KafkaConsumerManager consumerManager;
 
-    private final Instant startTime = Instant.now();
 
     @EventListener(ApplicationReadyEvent.class)
-    public void logStartup() {
+    public void logStartup(ApplicationReadyEvent event) {
+        Instant startTime = Instant.ofEpochMilli(event.getTimestamp());
         Duration startupTime = Duration.between(startTime, Instant.now());
 
         try {

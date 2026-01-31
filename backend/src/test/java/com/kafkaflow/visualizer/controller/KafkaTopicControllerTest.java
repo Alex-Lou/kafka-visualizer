@@ -1,12 +1,9 @@
 package com.kafkaflow.visualizer.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kafkaflow.visualizer.dto.KafkaDto.MessageFilter;
-import com.kafkaflow.visualizer.dto.KafkaDto.MessageResponse;
-import com.kafkaflow.visualizer.dto.KafkaDto.TopicResponse;
-import com.kafkaflow.visualizer.dto.KafkaDto.TopicUpdateRequest;
+import com.kafkaflow.visualizer.dto.KafkaDto.*;
 import com.kafkaflow.visualizer.service.KafkaConnectionService;
-import com.kafkaflow.visualizer.service.KafkaTopicService;
+import com.kafkaflow.visualizer.service.kafkatopic.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -41,6 +38,15 @@ public class KafkaTopicControllerTest {
     private KafkaTopicService topicService;
 
     @MockBean
+    private KafkaTopicMessageService messageService;
+
+    @MockBean
+    private KafkaTopicStatsService statsService;
+
+    @MockBean
+    private KafkaOrphanTopicService orphanService;
+
+    @MockBean
     private KafkaConnectionService connectionService;
 
     @Test
@@ -51,9 +57,8 @@ public class KafkaTopicControllerTest {
 
         given(topicService.getTopicsByConnection(1L)).willReturn(topics);
 
-        // When
+        // When & Then
         mockMvc.perform(get("/api/topics/connection/1"))
-                // Then
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].name").value("topic1"));
@@ -66,9 +71,8 @@ public class KafkaTopicControllerTest {
 
         given(topicService.getTopic(1L)).willReturn(topic);
 
-        // When
+        // When & Then
         mockMvc.perform(get("/api/topics/1"))
-                // Then
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.name").value("topic1"));
@@ -89,11 +93,10 @@ public class KafkaTopicControllerTest {
 
         given(topicService.updateTopic(eq(1L), any(TopicUpdateRequest.class))).willReturn(response);
 
-        // When
+        // When & Then
         mockMvc.perform(put("/api/topics/1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                // Then
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.description").value("Updated"));
@@ -104,9 +107,8 @@ public class KafkaTopicControllerTest {
         // Given
         doNothing().when(topicService).deleteTopic(1L);
 
-        // When
+        // When & Then
         mockMvc.perform(delete("/api/topics/1"))
-                // Then
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
@@ -123,9 +125,8 @@ public class KafkaTopicControllerTest {
         given(connectionService.discoverTopics(1L)).willReturn(discoveredTopics);
         given(topicService.syncTopics(1L, discoveredTopics)).willReturn(syncedTopics);
 
-        // When
+        // When & Then
         mockMvc.perform(post("/api/topics/connection/1/sync"))
-                // Then
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.length()").value(2));
@@ -137,13 +138,44 @@ public class KafkaTopicControllerTest {
         MessageResponse msg = MessageResponse.builder().id(1L).value("test").build();
         Page<MessageResponse> page = new PageImpl<>(Collections.singletonList(msg));
 
-        given(topicService.getMessages(any(MessageFilter.class))).willReturn(page);
+        given(messageService.getMessages(any(MessageFilter.class))).willReturn(page);
 
-        // When
+        // When & Then
         mockMvc.perform(get("/api/topics/1/messages"))
-                // Then
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].value").value("test"));
+    }
+
+    @Test
+    public void getLiveStats_ShouldReturnStats() throws Exception {
+        // Given
+        TopicLiveStatsResponse stats = TopicLiveStatsResponse.builder()
+                .topicId(1L)
+                .topicName("topic1")
+                .totalMessages(100L)
+                .build();
+
+        given(statsService.getLiveStats(1L)).willReturn(stats);
+
+        // When & Then
+        mockMvc.perform(get("/api/topics/1/live-stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.totalMessages").value(100));
+    }
+
+    @Test
+    public void getOrphanTopics_ShouldReturnList() throws Exception {
+        // Given
+        TopicResponse orphan = TopicResponse.builder().id(1L).name("orphan-topic").build();
+
+        given(orphanService.getOrphanTopics()).willReturn(Collections.singletonList(orphan));
+
+        // When & Then
+        mockMvc.perform(get("/api/topics/orphans"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].name").value("orphan-topic"));
     }
 }

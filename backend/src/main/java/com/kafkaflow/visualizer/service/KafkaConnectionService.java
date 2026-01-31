@@ -6,22 +6,20 @@ import com.kafkaflow.visualizer.exception.KafkaConnectionException;
 import com.kafkaflow.visualizer.exception.ResourceNotFoundException;
 import com.kafkaflow.visualizer.model.KafkaConnection;
 import com.kafkaflow.visualizer.model.KafkaConnection.ConnectionStatus;
-import com.kafkaflow.visualizer.model.KafkaTopic;
 import com.kafkaflow.visualizer.repository.KafkaConnectionRepository;
 import com.kafkaflow.visualizer.repository.KafkaTopicRepository;
+import com.kafkaflow.visualizer.service.kafka.KafkaLogger;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.apache.kafka.clients.admin.ListTopicsResult;
-import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.clients.admin.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +28,7 @@ public class KafkaConnectionService {
 
     private final KafkaConnectionRepository connectionRepository;
     private final KafkaTopicRepository topicRepository;
+    private final KafkaLogger kafkaLogger;
     private final Map<Long, AdminClient> adminClients = new ConcurrentHashMap<>();
 
     @Transactional(readOnly = true)
@@ -52,26 +51,10 @@ public class KafkaConnectionService {
             throw new DuplicateResourceException("Connection", "name", request.getName());
         }
 
-        KafkaConnection connection = KafkaConnection.builder()
-                .name(request.getName())
-                .bootstrapServers(request.getBootstrapServers())
-                .description(request.getDescription())
-                .defaultConnection(request.isDefaultConnection())
-                .securityProtocol(request.getSecurityProtocol())
-                .saslMechanism(request.getSaslMechanism())
-                .saslUsername(request.getSaslUsername())
-                .saslPassword(request.getSaslPassword())
-                .status(ConnectionStatus.DISCONNECTED)
-                .build();
+        KafkaConnection connection = buildConnectionFromRequest(request, ConnectionStatus.DISCONNECTED);
+        handleDefaultConnectionFlag(request.isDefaultConnection());
 
-        if (request.isDefaultConnection()) {
-            connectionRepository.findByDefaultConnectionTrue()
-                    .ifPresent(c -> {
-                        c.setDefaultConnection(false);
-                        connectionRepository.save(c);
-                    });
-        }
-
+        kafkaLogger.logConnectionCreated(request.getName(), request.getBootstrapServers());
         return toConnectionResponse(connectionRepository.save(connection));
     }
 
@@ -80,237 +63,140 @@ public class KafkaConnectionService {
         KafkaConnection connection = connectionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Connection", id));
 
-        connection.setName(request.getName());
-        connection.setBootstrapServers(request.getBootstrapServers());
-        connection.setDescription(request.getDescription());
-        connection.setSecurityProtocol(request.getSecurityProtocol());
-        connection.setSaslMechanism(request.getSaslMechanism());
-        connection.setSaslUsername(request.getSaslUsername());
+        updateConnectionFields(connection, request); // On met à jour les champs
 
-        if (request.getSaslPassword() != null && !request.getSaslPassword().isBlank()) {
-            connection.setSaslPassword(request.getSaslPassword());
-        }
+        handleDefaultConnectionFlag(request.isDefaultConnection());
+        KafkaConnection savedConnection = connectionRepository.save(connection);
 
-        if (request.isDefaultConnection() && !connection.isDefaultConnection()) {
-            connectionRepository.findByDefaultConnectionTrue()
-                    .ifPresent(c -> {
-                        c.setDefaultConnection(false);
-                        connectionRepository.save(c);
-                    });
-            connection.setDefaultConnection(true);
-        }
+        // 2. À TOI : Appelle la méthode pour fermer l'AdminClient (utilise l'id)
+        closeAdminClient(id);
 
-        return toConnectionResponse(connectionRepository.save(connection));
+        return toConnectionResponse(savedConnection);
+
     }
 
     @Transactional
     public void deleteConnection(Long id) {
-        closeAdminClient(id);
-        connectionRepository.deleteById(id);
-    }
-
-    @Transactional
-    public ConnectionResponse testConnection(Long id) {
         KafkaConnection connection = connectionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Connection", id));
 
-        try {
-            connection.setStatus(ConnectionStatus.CONNECTING);
-            connectionRepository.save(connection);
 
-            AdminClient adminClient = getOrCreateAdminClient(connection);
-            ListTopicsResult topics = adminClient.listTopics();
-            Set<String> topicNames = topics.names().get(10, TimeUnit.SECONDS);
-
-            connection.setStatus(ConnectionStatus.CONNECTED);
-            connection.setLastConnectedAt(LocalDateTime.now());
-            connectionRepository.save(connection);
-
-            log.info("Successfully connected to Kafka: {}", connection.getName());
-
-            // Auto-sync avec métadonnées (partitions, replication factor)
-            autoSyncTopicsWithMetadata(connection, adminClient, topicNames);
-
-        } catch (Exception e) {
-            log.error("Failed to connect to Kafka: {}", connection.getName(), e);
-            connection.setStatus(ConnectionStatus.ERROR);
-            closeAdminClient(id);
-        }
-
-        return toConnectionResponse(connectionRepository.save(connection));
+        kafkaLogger.logConnectionDeleted(connection.getName());
+        connectionRepository.deleteById(id);
+        closeAdminClient(id);
     }
 
-    /**
-     * Auto-sync des topics avec récupération des métadonnées (partitions, replication factor)
-     */
-    private void autoSyncTopicsWithMetadata(KafkaConnection connection, AdminClient adminClient, Set<String> topicNames) {
-        try {
-            // Filtrer les topics internes
-            Set<String> userTopics = new HashSet<>();
-            for (String topicName : topicNames) {
-                if (!topicName.startsWith("_")) {
-                    userTopics.add(topicName);
-                }
-            }
-
-            if (userTopics.isEmpty()) {
-                log.debug("No user topics to sync for connection: {}", connection.getName());
-                return;
-            }
-
-            log.debug("Auto-syncing {} topics with metadata for connection: {}", userTopics.size(), connection.getName());
-
-            // Récupérer les descriptions des topics (partitions, replication factor)
-            Map<String, TopicDescription> descriptions = new HashMap<>();
-            try {
-                descriptions = adminClient.describeTopics(userTopics).allTopicNames().get(15, TimeUnit.SECONDS);
-            } catch (Exception e) {
-                log.warn("Failed to describe topics, syncing without metadata: {}", e.getMessage());
-                // Fallback: sync sans métadonnées
-                autoSyncTopicsLegacy(connection, userTopics);
-                return;
-            }
-
-            // Créer ou mettre à jour chaque topic avec ses métadonnées
-            for (String topicName : userTopics) {
-                TopicDescription desc = descriptions.get(topicName);
-                Integer partitions = desc != null ? desc.partitions().size() : null;
-                Short replicationFactor = desc != null && !desc.partitions().isEmpty()
-                        ? (short) desc.partitions().get(0).replicas().size()
-                        : null;
-
-                KafkaTopic topic = topicRepository.findByConnectionIdAndName(connection.getId(), topicName)
-                        .orElseGet(() -> KafkaTopic.builder()
-                                .name(topicName)
-                                .connection(connection)
-                                .monitored(true)
-                                .messageCount(0L)
-                                .build());
-
-                // Mettre à jour les métadonnées
-                topic.setPartitions(partitions);
-                topic.setReplicationFactor(replicationFactor);
-
-                // Activer le monitoring si nouveau topic
-                if (topic.getId() == null) {
-                    topic.setMonitored(true);
-                    log.debug("Auto-created topic with metadata: {} (partitions={}, rf={})",
-                            topicName, partitions, replicationFactor);
-                } else {
-                    log.debug("Updated topic metadata: {} (partitions={}, rf={})",
-                            topicName, partitions, replicationFactor);
-                }
-
-                topicRepository.save(topic);
-            }
-
-            log.info("Successfully synced {} topics with metadata for connection: {}",
-                    userTopics.size(), connection.getName());
-
-        } catch (Exception e) {
-            log.error("Error auto-syncing topics with metadata for connection: {}", connection.getName(), e);
-        }
-    }
-
-    /**
-     * Fallback: sync des topics sans métadonnées (ancienne méthode)
-     */
-    private void autoSyncTopicsLegacy(KafkaConnection connection, Set<String> topicNames) {
-        for (String topicName : topicNames) {
-            if (!topicRepository.existsByConnectionIdAndName(connection.getId(), topicName)) {
-                KafkaTopic topic = KafkaTopic.builder()
-                        .name(topicName)
-                        .connection(connection)
-                        .monitored(true)
-                        .messageCount(0L)
-                        .build();
-                topicRepository.save(topic);
-                log.debug("Auto-created topic (no metadata): {}", topicName);
-            } else {
-                topicRepository.findByConnectionIdAndName(connection.getId(), topicName)
-                        .ifPresent(topic -> {
-                            if (!topic.isMonitored()) {
-                                topic.setMonitored(true);
-                                topicRepository.save(topic);
-                                log.debug("Enabled monitoring for existing topic: {}", topicName);
-                            }
-                        });
-            }
-        }
-    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // KAFKA OPERATIONS (Simplifiées)
+    // ═══════════════════════════════════════════════════════════════════════
 
     @Transactional
     public List<String> discoverTopics(Long connectionId) {
         KafkaConnection connection = connectionRepository.findById(connectionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Connection", connectionId));
 
+        kafkaLogger.logTopicDiscoveryStart(connection.getName());
+
         try {
             AdminClient adminClient = getOrCreateAdminClient(connection);
-            Set<String> topicNames = adminClient.listTopics().names().get(10, TimeUnit.SECONDS);
+            // On réduit le timeout pour ne pas bloquer l'UI trop longtemps
+            Set<String> topicNames = adminClient.listTopics(new ListTopicsOptions().timeoutMs(5000))
+                    .names()
+                    .get(6, TimeUnit.SECONDS);
+
+            kafkaLogger.logTopicDiscoverySuccess(connection.getName(), topicNames.size());
             return new ArrayList<>(topicNames);
-        } catch (Exception e) {
-            log.error("Failed to discover topics for connection: {}", connectionId, e);
-            throw new KafkaConnectionException("Failed to discover topics: " + e.getMessage(), e);
+
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            throw new KafkaConnectionException("Failed to discover topics", e);
         }
     }
 
-    /**
-     * Refresh les métadonnées de tous les topics d'une connexion
-     */
+    public void listerTopics(AdminClient adminClient) {
+        try {
+            // On imagine que cette ligne peut planter
+            adminClient.listTopics().names().get();
+        } catch (Exception e) {
+            throw new KafkaConnectionException("Impossible de lister les topics sur le serveur.", e);
+        }
+    }
+
     @Transactional
     public void refreshTopicMetadata(Long connectionId) {
         KafkaConnection connection = connectionRepository.findById(connectionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Connection", connectionId));
 
+        kafkaLogger.logMetadataRefreshStart(connection.getName());
+
         try {
             AdminClient adminClient = getOrCreateAdminClient(connection);
-            Set<String> topicNames = adminClient.listTopics().names().get(10, TimeUnit.SECONDS);
+            Set<String> allTopics = adminClient.listTopics(new ListTopicsOptions().timeoutMs(5000))
+                    .names()
+                    .get(6, TimeUnit.SECONDS);
 
-            // Filtrer les topics internes
-            Set<String> userTopics = new HashSet<>();
-            for (String topicName : topicNames) {
-                if (!topicName.startsWith("_")) {
-                    userTopics.add(topicName);
-                }
-            }
+            // Filtrer les topics internes (_)
+            List<String> userTopics = allTopics.stream()
+                    .filter(t -> !t.startsWith("_"))
+                    .toList();
 
             if (userTopics.isEmpty()) {
+                kafkaLogger.logNoTopicsToRefresh(connection.getName());
                 return;
             }
 
-            // Récupérer les descriptions
             Map<String, TopicDescription> descriptions = adminClient.describeTopics(userTopics)
-                    .allTopicNames().get(15, TimeUnit.SECONDS);
+                    .allTopicNames()
+                    .get(10, TimeUnit.SECONDS);
 
-            // Mettre à jour les topics existants
-            for (Map.Entry<String, TopicDescription> entry : descriptions.entrySet()) {
-                String topicName = entry.getKey();
-                TopicDescription desc = entry.getValue();
+            updateTopicsInDb(connectionId, descriptions);
+            kafkaLogger.logMetadataRefreshSuccess(connection.getName(), descriptions.size());
 
-                topicRepository.findByConnectionIdAndName(connectionId, topicName)
-                        .ifPresent(topic -> {
-                            topic.setPartitions(desc.partitions().size());
-                            if (!desc.partitions().isEmpty()) {
-                                topic.setReplicationFactor((short) desc.partitions().get(0).replicas().size());
-                            }
-                            topicRepository.save(topic);
-                        });
-            }
-
-            log.info("Refreshed metadata for {} topics on connection: {}", userTopics.size(), connection.getName());
-
-        } catch (Exception e) {
-            log.error("Failed to refresh topic metadata for connection: {}", connectionId, e);
-            throw new KafkaConnectionException("Failed to refresh topic metadata: " + e.getMessage(), e);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            // ✅ Propagation naturelle vers le GlobalHandler
+            throw new KafkaConnectionException("Failed to refresh topic metadata", e);
         }
     }
 
-    private AdminClient getOrCreateAdminClient(KafkaConnection connection) {
+    @Transactional
+    public ConnectionResponse testConnection(Long id) {
+        // Simple test de récupération, pourrait être enrichi par un vrai "ping" Kafka
+        // Si tu veux tester la connexion réellement, appelle discoverTopics(id) ici et ignore le résultat.
+        KafkaConnection connection = connectionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Connection", id));
+
+        // Optionnel : Forcer un check réel
+        // discoverTopics(id);
+
+        return toConnectionResponse(connectionRepository.save(connection));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIVATE HELPERS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private void updateTopicsInDb(Long connectionId, Map<String, TopicDescription> descriptions) {
+        for (Map.Entry<String, TopicDescription> entry : descriptions.entrySet()) {
+            String topicName = entry.getKey();
+            TopicDescription desc = entry.getValue();
+
+            topicRepository.findByConnectionIdAndName(connectionId, topicName)
+                    .ifPresent(topic -> {
+                        topic.setPartitions(desc.partitions().size());
+                        if (!desc.partitions().isEmpty()) {
+                            topic.setReplicationFactor((short) desc.partitions().get(0).replicas().size());
+                        }
+                        topicRepository.save(topic);
+                    });
+        }
+    }
+
+    public AdminClient getOrCreateAdminClient(KafkaConnection connection) {
         return adminClients.computeIfAbsent(connection.getId(), id -> {
             Properties props = new Properties();
             props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, connection.getBootstrapServers());
-            props.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 5000);
-            props.put(AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 10000);
+            props.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 5000); // Fail fast
+            props.put(AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 5000);
+            props.put(AdminClientConfig.RETRIES_CONFIG, 1);
 
             if (connection.getSecurityProtocol() != null) {
                 props.put("security.protocol", connection.getSecurityProtocol());
@@ -324,6 +210,7 @@ public class KafkaConnectionService {
                 ));
             }
 
+            kafkaLogger.logAdminClientCreated(connection.getName());
             return AdminClient.create(props);
         });
     }
@@ -331,7 +218,50 @@ public class KafkaConnectionService {
     private void closeAdminClient(Long connectionId) {
         AdminClient client = adminClients.remove(connectionId);
         if (client != null) {
-            client.close();
+            try {
+                client.close();
+            } catch (Exception e) {
+                log.warn("Error closing AdminClient for connection {}: {}", connectionId, e.getMessage());
+            }
+            kafkaLogger.logAdminClientClosed(connectionId);
+        }
+    }
+
+    private void handleDefaultConnectionFlag(boolean isDefault) {
+        if (isDefault) {
+            connectionRepository.findByDefaultConnectionTrue()
+                    .ifPresent(c -> {
+                        c.setDefaultConnection(false);
+                        connectionRepository.save(c);
+                    });
+        }
+    }
+
+    // Helpers de construction pour alléger le code principal
+    private KafkaConnection buildConnectionFromRequest(ConnectionRequest request, ConnectionStatus status) {
+        return KafkaConnection.builder()
+                .name(request.getName())
+                .bootstrapServers(request.getBootstrapServers())
+                .description(request.getDescription())
+                .defaultConnection(request.isDefaultConnection())
+                .securityProtocol(request.getSecurityProtocol())
+                .saslMechanism(request.getSaslMechanism())
+                .saslUsername(request.getSaslUsername())
+                .saslPassword(request.getSaslPassword())
+                .status(status)
+                .build();
+    }
+
+    private void updateConnectionFields(KafkaConnection connection, ConnectionRequest request) {
+        connection.setName(request.getName());
+        connection.setBootstrapServers(request.getBootstrapServers());
+        connection.setDescription(request.getDescription());
+        connection.setSecurityProtocol(request.getSecurityProtocol());
+        connection.setSaslMechanism(request.getSaslMechanism());
+        connection.setSaslUsername(request.getSaslUsername());
+
+        if (request.getSaslPassword() != null && !request.getSaslPassword().isBlank()) {
+            connection.setSaslPassword(request.getSaslPassword());
         }
     }
 
@@ -350,24 +280,12 @@ public class KafkaConnectionService {
                 .build();
     }
 
+    // Pour le debug seulement
     @Transactional
     public ConnectionResponse createErrorTestConnection() {
-        connectionRepository.findByName("Test Error Connection")
-                .ifPresent(conn -> {
-                    closeAdminClient(conn.getId());
-                    connectionRepository.delete(conn);
-                });
-
-        KafkaConnection connection = KafkaConnection.builder()
-                .name("Test Error Connection")
-                .bootstrapServers("localhost:19999")
-                .description("Test connection for error handling visualization")
-                .defaultConnection(false)
-                .status(ConnectionStatus.DISCONNECTED)
-                .build();
-
-        connection = connectionRepository.save(connection);
-
-        return testConnection(connection.getId());
+        return createConnection(ConnectionRequest.builder()
+                .name("Test Error Connection " + System.currentTimeMillis())
+                .bootstrapServers("localhost:9999") // Port invalide
+                .build());
     }
 }
