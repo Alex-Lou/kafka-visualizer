@@ -16,31 +16,32 @@ const styles = {
 };
 
 export default function NotificationToast() {
-  const { notifications, removeNotification } = useUIStore();
+  const { toasts, removeToast } = useUIStore();
 
-  if (notifications.length === 0) return null;
+  if (toasts.length === 0) return null;
 
   return (
     <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm w-full">
-      {notifications.map((notification) => {
-        const Icon = icons[notification.type] || Info;
-        const style = styles[notification.type] || styles.info;
+      {toasts.map((toast) => {
+        const Icon = icons[toast.type] || Info;
+        const style = styles[toast.type] || styles.info;
 
         return (
           <div
-            key={notification.id}
+            key={toast.id}
             className={`${style} flex items-start gap-3 p-4 rounded-lg border shadow-lg animate-in slide-in-from-right-5 duration-300`}
           >
             <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              {notification.title && (
-                <p className="font-semibold text-sm mb-1">{notification.title}</p>
+              {toast.title && (
+                <p className="font-semibold text-sm mb-1">{toast.title}</p>
               )}
-              <p className="text-sm">{notification.message}</p>
+              <p className="text-sm">{toast.message}</p>
             </div>
             <button
-              onClick={() => removeNotification(notification.id)}
+              onClick={() => removeToast(toast.id)}
               className="flex-shrink-0 hover:opacity-70 transition-opacity"
+              aria-label="Close notification"
             >
               <X className="w-4 h-4" />
             </button>

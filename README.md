@@ -1,112 +1,56 @@
 # Yucast
+**Real-time Kafka message monitoring and visualization platform.**
 
-Real-time Kafka message monitoring and visualization platform.
+Yucast bridges the gap between complex Kafka streams and human-readable insights. It provides real-time data flow visualization, message retention management, and system health monitoring in a single, unified dashboard.
 
-## Features
+---
 
-- Real-time message monitoring via WebSocket
-- Multi-cluster Kafka connections
-- Advanced message search and filtering
-- Message archiving with retention policies
-- Visual flow diagrams
-- Analytics and statistics dashboard
+## Key Features
+
+* **Real-time Monitoring:** Watch messages flow through your topics via WebSocket.
+* **Multi-Cluster Support:** Manage multiple Kafka connections simultaneously.
+* **Advanced Search:** Filter messages by key, content, partition, or timestamp.
+* **Retention & Archiving:** Automated retention policies with manual archiving capabilities.
+* **Visual Flow Diagrams:** Visualize how your applications and topics interact.
+* **System Health:** Built-in diagnostics for Database and Kafka connectivity.
+
+---
 
 ## Quick Start
 
-### Option 1: Setup Wizard (Recommended)
+Choose the installation method that best fits your needs.
 
-**Linux/Mac:**
-```bash
-chmod +x scripts/setup.sh
+### 1. Setup Wizard (Recommended)
+Automatically configures the database, secrets, and environment files.
+
+**Windows**
+==> scripts\setup.bat
+
+**Linux / macOS**
+==> chmod +x scripts/setup.sh
 ./scripts/setup.sh
-```
 
-**Windows:**
-```cmd
-scripts\setup.bat
-```
+2.Docker SetupIdeal for testing or isolated environments.Demo Mode (No external dependencies, uses H2 Database & Embedded Kafka):Bashdocker-compose -f docker-compose.demo.yml up -d --build
 
-### Option 2: Manual Setup
+Production Mode (Full stack with MySQL & Kafka):Bashdocker-compose up -d --build
 
-1. Copy environment template:
-```bash
-cp .env.example .env
-```
 
-2. Edit `.env` with your configuration
+3.Manual Setup (Development)For contributors who want to run the stack locally.Environment:Bashcp .env.example .env
 
-3. Start backend:
-```bash
-cd backend
+# Edit .env with your configuration
+Start Backend: --> cd backend
 mvn spring-boot:run
-```
 
-4. Start frontend:
-```bash
-cd frontend
+Start Frontend: --> cd frontend
 npm install
 npm run dev
-```
 
-5. Open http://localhost:5173
+Administrator AccountAccess to the platform is secured. You must create an OWNER account to log in.Use the provided utility script to securely inject an admin user into the database.Note: Ensure your database (or Docker container) is running before executing this script.WindowsPowerShellcd backend
 
-## Requirements
+---> create-owner.bat
+**Linux / macOS** ==> cd backend
+chmod +x create-owner.sh
+./create-owner.sh
 
-- Java 17+
-- Maven 3.8+
-- Node.js 18+
-- MySQL 8+ (or H2 for demo mode)
-- Apache Kafka (optional for demo mode)
 
-## Configuration
-
-All configuration is done via environment variables. See `.env.example` for available options.
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SPRING_PROFILES_ACTIVE` | Spring profile (demo, local, prod) | demo |
-| `DB_URL` | Database JDBC URL | - |
-| `DB_USERNAME` | Database username | - |
-| `DB_PASSWORD` | Database password | - |
-| `JWT_SECRET` | Secret for JWT tokens | - |
-| `KAFKA_BOOTSTRAP_SERVERS` | Default Kafka servers | localhost:9092 |
-
-## Project Structure
-
-```
-yucast/
-├── backend/          # Spring Boot API
-├── frontend/         # React + Vite
-├── demo/             # Demo Kafka producer
-├── scripts/          # Setup scripts
-├── docs/             # Documentation
-└── docker/           # Docker configurations
-```
-
-## Demo Mode
-
-Demo mode uses an embedded H2 database and requires no external dependencies.
-
-```bash
-SPRING_PROFILES_ACTIVE=demo
-DEMO_MODE=true
-```
-
-## Tech Stack
-
-**Backend:**
-- Spring Boot 3
-- Spring WebSocket
-- Spring Data JPA
-- Apache Kafka Client
-
-**Frontend:**
-- React 18
-- Vite
-- TailwindCSS
-- Zustand
-- Recharts
-
-## License
-
-MIT License - See [LICENSE](LICENSE) for details.
+ConfigurationConfiguration is managed via environment variables in the .env file.VariableDescriptionDefaultSPRING_PROFILES_ACTIVEApplication mode (demo, local, prod)demoDB_URLJDBC Database URLRequired for prodDB_USERNAMEDatabase usernameyucastDB_PASSWORDDatabase passwordyucastJWT_SECRETSecret key for token encryptionRequiredKAFKA_BOOTSTRAP_SERVERSDefault Kafka Connectionlocalhost:9092MAIL_HOSTSMTP Host for notificationssmtp.gmail.comProject Structurebackend/: Spring Boot 3 API (Java 17)frontend/: React 18 + Vitescripts/: Automated setup wizardsdocker/: Container configurationsdocs/: Advanced documentationTech StackBackendSpring Boot 3Spring WebSocketSpring Data JPAApache Kafka ClientFrontendReact 18Vite & TailwindCSSZustand (State Management)RechartsLicenseMIT License - See LICENSE for details.

@@ -106,4 +106,9 @@ public class RetentionStatsService {
         }
         stats.updateThroughput();
     }
+
+    public List<KafkaMessageStats> getStatsForTopic(Long topicId, LocalDateTime start, LocalDateTime end) {
+        return statsRepository.findByTopicIdAndHourBucketBetweenOrderByHourBucketAsc(
+                topicId, start, end);
+    }
 }

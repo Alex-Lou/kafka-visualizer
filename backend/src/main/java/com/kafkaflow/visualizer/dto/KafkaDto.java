@@ -1,5 +1,6 @@
 package com.kafkaflow.visualizer.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.kafkaflow.visualizer.model.KafkaConnection.ConnectionStatus;
 import com.kafkaflow.visualizer.model.KafkaMessage.MessageDirection;
 import com.kafkaflow.visualizer.model.KafkaMessage.MessageStatus;
@@ -280,6 +281,7 @@ public class KafkaDto {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class ApiResponse<T> {
         private boolean success;
         private String message;

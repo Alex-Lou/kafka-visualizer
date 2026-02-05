@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Zap,
   Archive,
+  Users, // <--- AJOUT ICI
 } from 'lucide-react';
 import { useUIStore, useConnectionStore } from '@context/store/index';
 import { SIDEBAR } from '@constants/styles/sidebar';
@@ -24,6 +25,7 @@ const navItems = [
 ];
 
 const bottomNavItems = [
+  { path: '/users', icon: Users, label: 'Team' }, // <--- AJOUT ICI
   { path: '/settings', icon: Settings, label: 'Settings' },
 ];
 
@@ -58,7 +60,6 @@ export default function Sidebar() {
 
   return (
     <aside className={containerClasses}>
-      {/* Header */}
       <div className={`${SIDEBAR.HEADER} ${sidebarCollapsed ? SIDEBAR.HEADER_COLLAPSED : SIDEBAR.HEADER_EXPANDED}`}>
         <div className={SIDEBAR.LOGO}>
           <div className={SIDEBAR.LOGO_ICON}>
@@ -73,7 +74,6 @@ export default function Sidebar() {
         )}
       </div>
 
-      {/* Navigation */}
       <nav className={SIDEBAR.NAV_CONTAINER}>
         {!sidebarCollapsed && (
           <div className={SIDEBAR.NAV_SECTION}>
@@ -99,7 +99,6 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      {/* Footer - Connection Status */}
       <div className={sidebarCollapsed ? SIDEBAR.FOOTER_COLLAPSED : SIDEBAR.FOOTER}>
         <div className={sidebarCollapsed ? SIDEBAR.CONNECTION_STATUS_COLLAPSED : SIDEBAR.CONNECTION_STATUS}>
           <div className={`${SIDEBAR.CONNECTION_DOT} ${
@@ -113,7 +112,6 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Collapsed toggle */}
       {sidebarCollapsed && (
         <button
           onClick={toggleSidebar}

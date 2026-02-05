@@ -47,26 +47,26 @@ export const connectionApi = {
 export const topicApi = {
   getByConnection: (connectionId) => api.get(`/topics/connection/${connectionId}`),
   getById: (id) => api.get(`/topics/${id}`),
+  create: (connectionId, data) => api.post(`/topics/connection/${connectionId}/create`, data),
   update: (id, data) => api.put(`/topics/${id}`, data),
   delete: (id) => api.delete(`/topics/${id}`),
+  deleteFromKafka: (id) => api.delete(`/topics/${id}/kafka`),
   sync: (connectionId, topicNames) => api.post(`/topics/connection/${connectionId}/sync`, topicNames),
   getMessages: (topicId, params) => api.get(`/topics/${topicId}/messages`, { params }),
   getRecentMessages: (topicId) => api.get(`/topics/${topicId}/messages/recent`),
   getLiveStats: (topicId) => api.get(`/topics/${topicId}/live-stats`),
 };
 
-// Dashboard endpoints
+
 export const dashboardApi = {
   getStats: () => api.get('/dashboard/stats'),
 };
 
-// Health endpoints
 export const healthApi = {
   getHealth: () => api.get('/health'),
   getSimpleHealth: () => api.get('/health/simple'),
 };
 
-// Flow endpoints
 export const flowApi = {
   getAll: () => api.get('/flows'),
   getById: (id) => api.get(`/flows/${id}`),
@@ -82,21 +82,16 @@ export const flowApi = {
 // ═══════════════════════════════════════════════════════════════════════
 
 export const cleanupApi = {
-  /** Récupère la vue d'ensemble (connexions + topics orphelins) */
   getOverview: () => api.get('/cleanup'),
   
-  /** Compte le nombre total d'orphelins */
   count: () => api.get('/cleanup/count'),
   
-  /** Supprime les éléments sélectionnés */
   deleteSelected: (connectionIds = [], topicIds = []) => 
     api.delete('/cleanup', { data: { connectionIds, topicIds } }),
   
-  /** Supprime TOUS les éléments orphelins */
   deleteAll: () => api.delete('/cleanup/all'),
 };
 
-// Retention endpoints
 export const retentionApi = {
   // Policies
   getPolicies: () => api.get('/retention/policies'),
@@ -106,46 +101,43 @@ export const retentionApi = {
   updatePolicy: (id, data) => api.put(`/retention/policies/${id}`, data),
   deletePolicy: (id) => api.delete(`/retention/policies/${id}`),
 
-  // Storage
   getGlobalStorage: () => api.get('/retention/storage'),
   getTopicStorage: (topicId) => api.get(`/retention/storage/topic/${topicId}`),
 
-  // Archives
   getArchives: (params) => api.get('/retention/archives', { params }),
   getArchive: (id) => api.get(`/retention/archives/${id}`),
 
-  // Stats
   getTopicStats: (topicId, hours = 24) => api.get(`/retention/stats/topic/${topicId}`, { params: { hours } }),
   getDashboardStats: () => api.get('/retention/stats/dashboard'),
 
-  // Actions
-  triggerArchive: () => api.post('/retention/actions/archive'),
-  triggerPurge: () => api.post('/retention/actions/purge'),
+  triggerArchive: () => api.post('/retention/storage/archive'),
+  triggerPurge: () => api.post('/retention/storage/purge'),
   triggerStatsAggregation: () => api.post('/retention/actions/aggregate-stats'),
-  resetTopic: (topicId, data) => api.post(`/retention/actions/reset-topic/${topicId}`, data),
-  archiveTopic: (topicId) => api.post(`/retention/actions/archive-topic/${topicId}`),
-  archiveMessages: (messageIds) => api.post('/retention/actions/archive-messages', messageIds),
-  bookmarkMessage: (messageId, bookmarked) => api.post(`/retention/messages/${messageId}/bookmark`, {}, { params: { bookmarked } }),
+  resetTopic: (topicId, data) => api.post(`/retention/storage/topic/${topicId}/reset`, data),
+  archiveTopic: (topicId) => api.post(`/retention/storage/topic/${topicId}/archive`),
+  archiveMessages: (messageIds) => api.post('/retention/storage/messages/archive', messageIds),
+  
+  bookmarkMessage: (messageId, bookmarked) => 
+    api.post('/retention/storage/messages/bookmark', {}, { 
+      params: { 
+        messageId: messageId, 
+        isBookmarked: bookmarked 
+      } 
+    }),
 
-  // Job logs
   getJobLogs: (params) => api.get('/retention/jobs', { params }),
   getJobStats: () => api.get('/retention/jobs/stats'),
 };
 
 export const archiveApi = {
-  // Get archives with filters
   getAll: (params) => api.get('/archives', { params }),
   
-  // Get single archive (full content)
   getById: (id) => api.get(`/archives/${id}`),
   
-  // Get statistics
   getStats: () => api.get('/archives/stats'),
   
-  // Get filter options (for dropdowns)
   getFilterOptions: () => api.get('/archives/filters'),
   
-  // Export archives
   exportJson: (params) => api.get('/archives/export/json', { 
     params, 
     responseType: 'blob' 
@@ -158,12 +150,16 @@ export const archiveApi = {
     responseType: 'blob' 
   }),
   
-  // Delete archives
   delete: (id) => api.delete(`/archives/${id}`),
   deleteBulk: (data) => api.delete('/archives', { data }),
   
-  // Restore archives
   restore: (data) => api.post('/archives/restore', data),
+};
+
+export const userApi = {
+  getAll: () => api.get('/users'),
+  create: (data) => api.post('/users', data),
+  delete: (id) => api.delete(`/users/${id}`),
 };
 
 export default api;

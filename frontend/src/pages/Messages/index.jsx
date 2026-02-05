@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Header, Badge } from '@components/common';
-import { useMessageStore, useTopicStore, useRetentionStore } from '@context/store/index';
+import { useMessageStore, useTopicStore, useRetentionStore, useUIStore } from '@context/store/index';
 import { LAYOUT } from '@constants/styles/layout';
 import wsService from '@services/websocket';
 import emailService from '@services/emailService';
@@ -75,6 +75,7 @@ export default function MessagesPage() {
 
   const { topics, selectedTopic, selectTopic, fetchAllTopics } = useTopicStore();
   const { archiveMessages, archiveTopics } = useRetentionStore();
+  const { addToast, addNotification } = useUIStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [wsConnected, setWsConnected] = useState(false);
@@ -120,8 +121,6 @@ export default function MessagesPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topics.length]);
-
-
 
   useEffect(() => {
     const connectWS = async () => {
@@ -184,7 +183,11 @@ export default function MessagesPage() {
   const handleArchiveAction = async () => {
     const itemsToArchive = getItemsToActOn();
     if (itemsToArchive.length === 0) {
-      alert("No messages to archive. Select messages or apply a filter.");
+      addToast({
+        type: 'warning',
+        title: 'No Messages',
+        message: 'Select messages or apply a filter to archive.',
+      });
       return;
     }
 
@@ -195,10 +198,30 @@ export default function MessagesPage() {
       await archiveMessages(idsToArchive);
       setSelectedMessageIds(new Set());
       fetchFilteredMessages(selectedTopic.id);
-      alert('Archive successful!');
+      // 🎉 Toast pour feedback immédiat
+      addToast({
+        type: 'success',
+        title: 'Archived',
+        message: `${idsToArchive.length} message(s) archived`,
+      });
+      // 🔔 Notification importante dans l'historique
+      addNotification({
+        type: 'success',
+        title: 'Messages Archived',
+        message: `Successfully archived ${idsToArchive.length} message(s)`,
+      });
     } catch (error) {
       console.error('Failed to archive:', error);
-      alert('Failed to archive. Please try again.');
+      addToast({
+        type: 'error',
+        title: 'Archive Failed',
+        message: error.message || 'Failed to archive messages',
+      });
+      addNotification({
+        type: 'error',
+        title: 'Archive Failed',
+        message: `Failed to archive messages: ${error.message}`,
+      });
     } finally {
       setIsArchiving(false);
       setShowArchiveModal(false);
@@ -240,8 +263,6 @@ export default function MessagesPage() {
         }
 
         console.log('DEBUG - Extracted messages:', messagesForReport.length);
-
-        
         console.log('DEBUG - Messages from topics count:', messagesForReport.length);
         console.log('DEBUG - Messages from topics sample:', messagesForReport[0]);
       }
@@ -255,7 +276,11 @@ export default function MessagesPage() {
       });
 
       if (messagesForReport.length === 0) {
-        alert('No messages to send in the report. Please select messages or topics with data.');
+        addToast({
+          type: 'warning',
+          title: 'No Messages',
+          message: 'Select messages or topics with data to send.',
+        });
         setIsSendingEmail(false);
         return;
       }
@@ -268,12 +293,32 @@ export default function MessagesPage() {
         messages: messagesForReport,
       });
 
-      alert('Email report sent successfully!');
+      // 🎉 Toast pour feedback immédiat
+      addToast({
+        type: 'success',
+        title: 'Email Sent',
+        message: `Report sent to ${formData.recipient}`,
+      });
+      // 🔔 Notification importante dans l'historique
+      addNotification({
+        type: 'success',
+        title: 'Email Report Sent',
+        message: `${messagesForReport.length} message(s) sent to ${formData.recipient}`,
+      });
       setShowEmailModal(false);
       
     } catch (error) {
       console.error('Failed to send email:', error);
-      alert('Could not send the email report. Please try again.');
+      addToast({
+        type: 'error',
+        title: 'Email Failed',
+        message: error.message || 'Failed to send email report',
+      });
+      addNotification({
+        type: 'error',
+        title: 'Email Report Failed',
+        message: `Failed to send email report: ${error.message}`,
+      });
     } finally {
       setIsSendingEmail(false);
     }
@@ -282,7 +327,11 @@ export default function MessagesPage() {
   const handleExport = (format, items) => {
     const itemsToExport = items || getItemsToActOn();
     if (itemsToExport.length === 0) {
-      alert("No messages to export. Select messages or apply a filter.");
+      addToast({
+        type: 'warning',
+        title: 'No Messages',
+        message: 'Select messages or apply a filter to export.',
+      });
       return;
     }
 
@@ -301,6 +350,13 @@ export default function MessagesPage() {
       default:
         break;
     }
+
+    // 🎉 Toast pour feedback immédiat
+    addToast({
+      type: 'success',
+      title: 'Exported',
+      message: `${itemsToExport.length} message(s) exported as ${format.toUpperCase()}`,
+    });
   };
 
   const handleExportBookmarked = (format) => {

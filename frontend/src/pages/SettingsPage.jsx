@@ -61,7 +61,7 @@ const RetentionTimeline = ({ hotDays, archiveDays, autoPurge }) => {
 };
 
 export default function SettingsPage() {
-  const { theme, toggleTheme, notificationSettings, updateNotificationSettings } = useUIStore();
+  const { theme, toggleTheme, notificationSettings, updateNotificationSettings, addToast, addNotification } = useUIStore();
   const { globalPolicy, fetchGlobalPolicy, updatePolicy, storageSummary, fetchStorageSummary } = useRetentionStore();
 
   const [localPolicy, setLocalPolicy] = useState(null);
@@ -95,16 +95,46 @@ export default function SettingsPage() {
     try {
       await updatePolicy(localPolicy.id, localPolicy);
       setSaveStatus('success');
+      // 🎉 Toast pour feedback immédiat
+      addToast({
+        type: 'success',
+        title: 'Settings Saved',
+        message: 'Retention policy updated successfully',
+      });
+      // 🔔 Notification importante dans l'historique
+      addNotification({
+        type: 'success',
+        title: 'Retention Policy Updated',
+        message: `Hot: ${Math.round(localPolicy.hotRetentionHours / 24)}d, Archive: ${localPolicy.archiveRetentionDays}d`,
+      });
       setTimeout(() => setSaveStatus(null), 3000);
     } catch (error) {
       console.error('Failed to save policy:', error);
       setSaveStatus('error');
+      // 🎉 Toast pour l'erreur
+      addToast({
+        type: 'error',
+        title: 'Save Failed',
+        message: error.message || 'Failed to save settings',
+      });
+      // 🔔 Notification d'erreur dans l'historique
+      addNotification({
+        type: 'error',
+        title: 'Settings Save Failed',
+        message: `Failed to update retention policy: ${error.message}`,
+      });
     }
   };
 
   const handleReset = () => {
     if (globalPolicy) {
       setLocalPolicy({ ...globalPolicy });
+      // 🎉 Toast pour feedback
+      addToast({
+        type: 'info',
+        title: 'Reset',
+        message: 'Changes discarded',
+      });
     }
   };
 
@@ -333,3 +363,4 @@ export default function SettingsPage() {
     </>
   );
 }
+  

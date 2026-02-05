@@ -89,7 +89,6 @@ public class KafkaMessageArchive {
     public static KafkaMessageArchive fromMessage(KafkaMessage message, String topicName,
                                                   Long connectionId, String connectionName,
                                                   ArchiveReason reason) {
-        // Calculer la taille si pas déjà définie ou si égale à 0
         Integer size = message.getValueSize();
         if (size == null || size == 0) {
             size = message.getValue() != null ? message.getValue().length() : 0;

@@ -8,7 +8,7 @@ import { CARDS, BUTTONS, INPUTS } from '@constants/styles/components';
 
 export default function ConnectionsPage() {
   const { connections, isLoading, fetchConnections, testConnection, deleteConnection } = useConnectionStore();
-  const { addNotification, notificationSettings } = useUIStore();
+  const { addToast, addNotification, notificationSettings } = useUIStore();
   const [showModal, setShowModal] = useState(false);
   const [editingConnection, setEditingConnection] = useState(null);
 
@@ -17,20 +17,32 @@ export default function ConnectionsPage() {
   const handleTest = async (id) => {
     try {
       const result = await testConnection(id);
+      addToast({
+        type: result.status === 'CONNECTED' ? 'success' : 'error',
+        title: 'Connection Test',
+        message: result.status === 'CONNECTED'
+          ? `Connected to ${result.name}`
+          : `Failed to connect to ${result.name}`,
+      });
       if (notificationSettings.connectionStatus) {
         addNotification({
           type: result.status === 'CONNECTED' ? 'success' : 'error',
-          title: 'Connection Test',
+          title: result.status === 'CONNECTED' ? 'Connection Test Successful' : 'Connection Test Failed',
           message: result.status === 'CONNECTED'
             ? `Successfully connected to ${result.name}`
-            : `Failed to connect to ${result.name}`,
+            : `Unable to connect to ${result.name}`,
         });
       }
     } catch (e) {
+      addToast({
+        type: 'error',
+        title: 'Test Failed',
+        message: e.message || 'An error occurred',
+      });
       if (notificationSettings.connectionStatus) {
         addNotification({
           type: 'error',
-          title: 'Connection Test Failed',
+          title: 'Connection Test Error',
           message: e.message || 'An error occurred while testing the connection',
         });
       }
@@ -42,12 +54,22 @@ export default function ConnectionsPage() {
       try {
         const conn = connections.find(c => c.id === id);
         await deleteConnection(id);
-        addNotification({
+        addToast({
           type: 'success',
+          title: 'Deleted',
+          message: `${conn?.name || 'Connection'} removed`,
+        });
+        addNotification({
+          type: 'warning',
           title: 'Connection Deleted',
-          message: `${conn?.name || 'Connection'} has been deleted`,
+          message: `"${conn?.name || 'Connection'}" has been permanently deleted`,
         });
       } catch (e) {
+        addToast({
+          type: 'error',
+          title: 'Delete Failed',
+          message: e.message || 'Failed to delete',
+        });
         addNotification({
           type: 'error',
           title: 'Deletion Failed',

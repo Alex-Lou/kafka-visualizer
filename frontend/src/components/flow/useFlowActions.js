@@ -12,7 +12,6 @@ export function useFlowActions({
   addNotification 
 }) {
   
-  // Update node data
   const updateNodeData = useCallback((nodeId, newData) => {
     setNodes((nds) =>
       nds.map((node) =>
@@ -21,13 +20,11 @@ export function useFlowActions({
     );
   }, [setNodes]);
 
-  // Delete node and its edges
   const deleteNode = useCallback((nodeId) => {
     setNodes((nds) => nds.filter((node) => node.id !== nodeId));
     setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
   }, [setNodes, setEdges]);
 
-  // Delete selected nodes
   const deleteSelectedNodes = useCallback(() => {
     const selectedNodeIds = nodes.filter(n => n.selected).map(n => n.id);
     if (selectedNodeIds.length === 0) return;
@@ -44,7 +41,6 @@ export function useFlowActions({
     });
   }, [nodes, setNodes, setEdges, addNotification]);
 
-  // Handle connection between nodes
   const createEdge = useCallback((params) => {
     const sourceNode = nodes.find(n => n.id === params.source);
     const color = NODE_TYPE_COLORS[sourceNode?.type] || '#3b82f6';
@@ -59,7 +55,6 @@ export function useFlowActions({
     };
   }, [nodes, liveMode]);
 
-  // Handle drop from palette
   const handleDrop = useCallback((event) => {
     event.preventDefault();
 
@@ -82,7 +77,6 @@ export function useFlowActions({
     return newNode;
   }, [reactFlowInstance, setNodes]);
 
-  // Auto-layout nodes in a grid
   const autoLayout = useCallback(() => {
     const layoutedNodes = nodes.map((node, index) => ({
       ...node,
@@ -94,7 +88,6 @@ export function useFlowActions({
     setNodes(layoutedNodes);
   }, [nodes, setNodes]);
 
-  // Toggle live mode for all edges
   const toggleLiveMode = useCallback((newLiveMode) => {
     setEdges((eds) =>
       eds.map((edge) => ({
@@ -105,7 +98,6 @@ export function useFlowActions({
     );
   }, [setEdges]);
 
-  // Auto-generate from topics
   const autoGenerate = useCallback(({ topics, connections }) => {
     const monitoredTopics = topics.filter(t => t.monitored);
 
@@ -118,7 +110,6 @@ export function useFlowActions({
       return { nodes: [], edges: [] };
     }
 
-    // Group topics by connection
     const topicsByConnection = {};
     monitoredTopics.forEach(topic => {
       if (!topicsByConnection[topic.connectionId]) {
@@ -135,7 +126,6 @@ export function useFlowActions({
       const connection = connections.find(c => c.id === Number(connectionId));
       const xBase = 100;
       
-      // Add connection as an App node
       const connNodeId = `connection-${connectionId}`;
       newNodes.push({
         id: connNodeId,
@@ -148,7 +138,6 @@ export function useFlowActions({
         },
       });
 
-      // Add topics
       connectionTopics.forEach((topic, topicIndex) => {
         const topicNodeId = `topic-${topic.id}`;
         newNodes.push({
@@ -164,7 +153,6 @@ export function useFlowActions({
           },
         });
 
-        // Connect cluster to topic
         newEdges.push({
           id: `edge-${connNodeId}-${topicNodeId}`,
           source: connNodeId,

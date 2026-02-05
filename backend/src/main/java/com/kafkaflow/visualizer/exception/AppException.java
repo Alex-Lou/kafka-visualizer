@@ -2,9 +2,6 @@ package com.kafkaflow.visualizer.exception;
 
 import lombok.Getter;
 
-/**
- * Exception applicative de base
- */
 @Getter
 public class AppException extends RuntimeException {
 
@@ -35,9 +32,6 @@ public class AppException extends RuntimeException {
         this.detail = detail;
     }
 
-    /**
-     * Message pour les logs (format court)
-     */
     public String toLogString() {
         if (detail != null && !detail.equals(errorCode.getDefaultMessage())) {
             return String.format("[%s] %s", errorCode.getCode(), detail);

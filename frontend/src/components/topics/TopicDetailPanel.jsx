@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { X, MessageSquare, Activity, Clock, Database, Edit3, Trash2, Save, Palette, Zap, TrendingUp } from 'lucide-react';
 import { Button, Badge } from '@components/common';
-import { useTopicStore } from '@context/store/index';
+import { useTopicStore, useUIStore } from '@context/store/index';
 import useTopicMetrics from '@hooks/useTopicMetrics';
 import { topicApi } from '@services/api';
-
 
 // Predefined colors for topics
 const TOPIC_COLORS = [
@@ -20,20 +19,18 @@ const TOPIC_COLORS = [
   { name: 'Teal', value: '#14B8A6' },
 ];
 
-
 // CSS for slide animation - add this to your global CSS or tailwind config
 const slideInStyle = {
   animation: 'slideInRight 0.3s ease-out',
 };
 
-
 export default function TopicDetailPanel({ topic, connection, onClose, onUpdate, onDelete }) {
   const { updateTopic } = useTopicStore();
+  const { addToast, addNotification } = useUIStore();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
 
   // ═══════════════════════════════════════════════════════════════════════
   // REALTIME METRICS
@@ -65,7 +62,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
     monitored: topic?.monitored || false,
   });
 
-
   // Reset form when topic changes
   useEffect(() => {
     if (topic) {
@@ -79,9 +75,7 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
     }
   }, [topic?.id]);
 
-
   if (!topic) return null;
-
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -92,28 +86,70 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
         monitored: editForm.monitored,
       });
       setIsEditing(false);
+      // 🎉 Toast pour feedback immédiat
+      addToast({
+        type: 'success',
+        title: 'Saved',
+        message: 'Topic updated successfully',
+      });
+      // 🔔 Notification dans l'historique
+      addNotification({
+        type: 'success',
+        title: 'Topic Updated',
+        message: `"${topic.name}" configuration has been saved`,
+      });
       if (onUpdate) onUpdate();
     } catch (error) {
       console.error('Failed to update topic:', error);
+      addToast({
+        type: 'error',
+        title: 'Update Failed',
+        message: error.message || 'Failed to save changes',
+      });
+      addNotification({
+        type: 'error',
+        title: 'Update Failed',
+        message: `Failed to update "${topic.name}": ${error.message}`,
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
-
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
       await topicApi.delete(topic.id);
+      // 🎉 Toast pour feedback immédiat
+      addToast({
+        type: 'success',
+        title: 'Deleted',
+        message: 'Topic removed',
+      });
+      // 🔔 Notification importante dans l'historique
+      addNotification({
+        type: 'warning',
+        title: 'Topic Deleted',
+        message: `"${topic.name}" and all associated messages permanently deleted`,
+      });
       if (onDelete) onDelete(topic.id);
       onClose();
     } catch (error) {
       console.error('Failed to delete topic:', error);
+      addToast({
+        type: 'error',
+        title: 'Delete Failed',
+        message: error.message || 'Failed to delete topic',
+      });
+      addNotification({
+        type: 'error',
+        title: 'Delete Failed',
+        message: `Failed to delete "${topic.name}": ${error.message}`,
+      });
     } finally {
       setIsDeleting(false);
     }
   };
-
 
   const handleToggleMonitored = async () => {
     const newMonitored = !editForm.monitored;
@@ -123,18 +159,27 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
     if (!isEditing) {
       try {
         await updateTopic(topic.id, { monitored: newMonitored });
+        // 🎉 Toast pour feedback immédiat
+        addToast({
+          type: 'success',
+          title: newMonitored ? 'Monitoring Enabled' : 'Monitoring Disabled',
+          message: newMonitored ? 'Now tracking this topic' : 'Stopped tracking this topic',
+        });
         if (onUpdate) onUpdate();
       } catch (error) {
         // Revert on error
         setEditForm({ ...editForm, monitored: !newMonitored });
+        addToast({
+          type: 'error',
+          title: 'Update Failed',
+          message: 'Failed to toggle monitoring',
+        });
       }
     }
   };
 
-
   const isActive = realtimeIsActive || displayMessageCount > 0;
   const isEmpty = displayMessageCount === 0;
-
 
   return (
     <>
@@ -182,7 +227,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
           </div>
         </div>
 
-
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Status Badges */}
@@ -193,7 +237,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
             {isEmpty && !isActive && <Badge variant="neutral">Empty</Badge>}
             <Badge variant="secondary">{connection?.bootstrapServers}</Badge>
           </div>
-
 
           {/* Realtime Stats Banner */}
           {safeThroughputPerSecond > 0 && (
@@ -213,7 +256,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
             </div>
           )}
 
-
           {/* Stats Grid */}
           <div className="grid grid-cols-2 gap-4">
             {/* Messages - temps réel */}
@@ -227,7 +269,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
               </p>
             </div>
 
-
             {/* Throughput - temps réel */}
             <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
               <div className="flex items-center gap-2 text-surface-500 mb-1">
@@ -240,7 +281,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
               </p>
             </div>
 
-
             {/* Messages Last Minute - temps réel */}
             <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
               <div className="flex items-center gap-2 text-surface-500 mb-1">
@@ -252,7 +292,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
               </p>
             </div>
 
-
             {/* Partitions */}
             <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
               <div className="flex items-center gap-2 text-surface-500 mb-1">
@@ -263,7 +302,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
                 {topic.partitions || '-'}
               </p>
             </div>
-
 
             {/* Last Message - temps réel */}
             <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
@@ -278,7 +316,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
               </p>
             </div>
 
-
             {/* Replication Factor */}
             <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
               <div className="flex items-center gap-2 text-surface-500 mb-1">
@@ -289,7 +326,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
               </p>
             </div>
           </div>
-
 
           {/* Monitoring Toggle */}
           <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
@@ -318,7 +354,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
               </button>
             </div>
           </div>
-
 
           {/* Description */}
           <div>
@@ -351,7 +386,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
             )}
           </div>
 
-
           {/* Color Picker */}
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -380,7 +414,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
             </div>
           </div>
 
-
           {/* Topic Info */}
           <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4 space-y-2">
             <h3 className="text-sm font-medium text-surface-700 dark:text-surface-300 mb-3">
@@ -402,7 +435,6 @@ export default function TopicDetailPanel({ topic, connection, onClose, onUpdate,
             </div>
           </div>
         </div>
-
 
         {/* Footer Actions */}
         <div className="px-6 py-4 border-t border-surface-200 dark:border-surface-800 bg-surface-50 dark:bg-surface-850">

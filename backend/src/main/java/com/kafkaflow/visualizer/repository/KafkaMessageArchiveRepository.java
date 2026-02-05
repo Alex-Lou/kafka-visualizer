@@ -1,6 +1,5 @@
 package com.kafkaflow.visualizer.repository;
 
-import com.kafkaflow.visualizer.model.KafkaMessage;
 import com.kafkaflow.visualizer.model.KafkaMessageArchive;
 import com.kafkaflow.visualizer.model.KafkaMessageArchive.ArchiveReason;
 import com.kafkaflow.visualizer.model.KafkaMessageArchive.MessageType;
@@ -32,16 +31,8 @@ public interface KafkaMessageArchiveRepository extends JpaRepository<KafkaMessag
     // QUERIES USED BY RETENTION CONTROLLER
     // ═══════════════════════════════════════════════════════════════════════
 
-    /**
-     * Find archives by topic ordered by timestamp (paginated)
-     * Used by RetentionController.getArchives()
-     */
     Page<KafkaMessageArchive> findByTopicIdOrderByOriginalTimestampDesc(Long topicId, Pageable pageable);
 
-    /**
-     * Search archives by topic and content
-     * Used by RetentionController.getArchives()
-     */
     @Query("SELECT a FROM KafkaMessageArchive a WHERE " +
             "a.topicId = :topicId AND (" +
             "LOWER(a.messageKey) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
@@ -52,10 +43,6 @@ public interface KafkaMessageArchiveRepository extends JpaRepository<KafkaMessag
             Pageable pageable
     );
 
-    /**
-     * Get archive stats by topic (count, size, oldest, newest)
-     * Used by RetentionController.getTopicStorage()
-     */
     @Query("SELECT a.topicId, a.topicName, COUNT(a), COALESCE(SUM(a.valueSize), 0), " +
             "MIN(a.originalTimestamp), MAX(a.originalTimestamp) " +
             "FROM KafkaMessageArchive a WHERE a.topicId = :topicId GROUP BY a.topicId, a.topicName")

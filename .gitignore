@@ -105,6 +105,9 @@ lerna-debug.log*
 .env.production.local
 .env.*.local
 
+# Keep example
+!.env.example
+
 # Demo
 /demo/node_modules/
 /demo/demo.pid
@@ -157,4 +160,4 @@ test-results/
 *.rej
 .cache/
 .parcel-cache/
-.eslintcache
+.eslintcache.env

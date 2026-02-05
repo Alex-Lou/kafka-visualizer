@@ -1,8 +1,5 @@
 package com.kafkaflow.visualizer.exception;
 
-/**
- * Erreur de connexion Kafka
- */
 public class KafkaConnectionException extends AppException {
 
     public KafkaConnectionException(String message) {

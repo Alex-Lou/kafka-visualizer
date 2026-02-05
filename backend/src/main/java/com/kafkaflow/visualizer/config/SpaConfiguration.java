@@ -22,12 +22,10 @@ public class SpaConfiguration implements WebMvcConfigurer {
                     protected Resource getResource(String resourcePath, Resource location) throws IOException {
                         Resource requestedResource = location.createRelative(resourcePath);
 
-                        // If file exists, serve it
                         if (requestedResource.exists() && requestedResource.isReadable()) {
                             return requestedResource;
                         }
 
-                        // Otherwise, serve index.html for SPA routing (except for /api paths)
                         if (!resourcePath.startsWith("api/")) {
                             return new ClassPathResource("/static/index.html");
                         }

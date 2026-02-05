@@ -1,8 +1,5 @@
 package com.kafkaflow.visualizer.exception;
 
-/**
- * Ressource non trouvée (404)
- */
 public class ResourceNotFoundException extends AppException {
 
     public ResourceNotFoundException(String message) {
