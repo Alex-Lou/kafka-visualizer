@@ -1,5 +1,6 @@
 package com.kafkaflow.visualizer.controller;
 
+import com.kafkaflow.visualizer.dto.KafkaDto.ApiResponse;
 import com.kafkaflow.visualizer.service.kafka.KafkaConsumerManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,21 +21,19 @@ public class DebugController {
     private final KafkaConsumerManager consumerManager;
 
     @GetMapping("/status")
-    public ResponseEntity<Map<String, Object>> getDebugStatus() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDebugStatus() {
         Map<String, Object> status = new HashMap<>();
 
         try {
-            // Test database connection
             jdbcTemplate.execute("SELECT 1");
             status.put("databaseConnection", "OK");
 
-            // Check if tables exist
             try {
                 Long totalMessages = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM kafka_messages", Long.class);
                 Long totalTopics = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM kafka_topics", Long.class);
                 Long monitoredTopics = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM kafka_topics WHERE monitored = true", Long.class);
 
-                status.put("database", "MySQL");
+                status.put("database", "MySQL/H2");
                 status.put("totalMessages", totalMessages);
                 status.put("totalTopics", totalTopics);
                 status.put("monitoredTopics", monitoredTopics);
@@ -44,30 +43,15 @@ public class DebugController {
                 status.put("tablesError", e.getMessage());
             }
 
-            // Check consumer status
             status.put("activeConsumers", consumerManager.getActiveConsumerCount());
             status.put("consumerStatus", consumerManager.getConsumerStatus());
 
-            return ResponseEntity.ok(status);
+            return ResponseEntity.ok(ApiResponse.success(status));
+
         } catch (Exception e) {
             status.put("databaseConnection", "FAILED");
             status.put("error", e.getMessage());
-            return ResponseEntity.ok(status);
-        }
-    }
-
-    @GetMapping("/create-tables")
-    public ResponseEntity<Map<String, Object>> createTables() {
-        Map<String, Object> result = new HashMap<>();
-
-        try {
-            // This will trigger Hibernate to create tables
-            result.put("message", "Tables should be created automatically by Hibernate on next restart");
-            result.put("hint", "Check application logs for any Hibernate errors");
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            result.put("error", e.getMessage());
-            return ResponseEntity.ok(result);
+            return ResponseEntity.ok(ApiResponse.success("System contains errors", status));
         }
     }
 }

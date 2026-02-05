@@ -11,9 +11,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.kafkaflow.visualizer.service.kafka.KafkaConsumerConfig.*;
 
-/**
- * Tâche de consommation pour un topic unique
- */
 @Slf4j
 public class ConsumerTask implements Runnable {
 
@@ -65,21 +62,17 @@ public class ConsumerTask implements Runnable {
                 }
 
             } catch (WakeupException e) {
-                // Shutdown signal - sortir proprement
                 break;
 
             } catch (Exception e) {
                 if (handleError(e)) {
-                    break; // Trop d'erreurs - arrêter
+                    break;
                 }
                 sleep(RETRY_DELAY_MS);
             }
         }
     }
 
-    /**
-     * Gère une erreur - retourne true si on doit arrêter
-     */
     private boolean handleError(Exception e) {
         int errors = consecutiveErrors.incrementAndGet();
         errorHandler.handleConsumerError(topicName, e, errors);
@@ -92,14 +85,10 @@ public class ConsumerTask implements Runnable {
         return false;
     }
 
-    /**
-     * Signale l'arrêt du consumer
-     */
     public void stop() {
         try {
             consumer.wakeup();
         } catch (Exception e) {
-            // Ignore
         }
     }
 
@@ -108,7 +97,6 @@ public class ConsumerTask implements Runnable {
             consumer.close();
             log.debug("✓ Consumer closed [{}]", topicName);
         } catch (Exception e) {
-            // Ignore
         }
     }
 

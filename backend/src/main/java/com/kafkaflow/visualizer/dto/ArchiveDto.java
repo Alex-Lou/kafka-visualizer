@@ -67,7 +67,6 @@ public class ArchiveDto {
         private String contentType;
         private String searchQuery;
 
-        // Defaults + validation
         @Builder.Default
         @Min(0)
         private int page = 0;
@@ -85,7 +84,7 @@ public class ArchiveDto {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // STATS (inchangé - déjà bien)
+    // STATS
     // ═══════════════════════════════════════════════════════════════════════
 
     @Data
@@ -157,7 +156,6 @@ public class ArchiveDto {
 
         private boolean compress;
 
-        // Validation custom : au moins un critère de sélection
         @AssertTrue(message = "Must specify ids, topicId, or date range")
         private boolean isValidSelection() {
             return (ids != null && !ids.isEmpty())
@@ -198,7 +196,6 @@ public class ArchiveDto {
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
         private LocalDateTime olderThan;
 
-        // Sécurité : empêcher suppression accidentelle de tout
         @AssertTrue(message = "Must specify at least one deletion criteria")
         private boolean isValidRequest() {
             return (ids != null && !ids.isEmpty())
@@ -244,7 +241,7 @@ public class ArchiveDto {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // FILTER OPTIONS (inchangé)
+    // FILTER OPTIONS
     // ═══════════════════════════════════════════════════════════════════════
 
     @Data

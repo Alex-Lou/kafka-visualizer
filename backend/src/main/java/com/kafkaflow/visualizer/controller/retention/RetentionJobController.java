@@ -1,19 +1,18 @@
 package com.kafkaflow.visualizer.controller.retention;
 
-import com.kafkaflow.visualizer.dto.RetentionDto.*;
-import com.kafkaflow.visualizer.model.RetentionJobLog;
+import com.kafkaflow.visualizer.dto.KafkaDto.ApiResponse;
+import com.kafkaflow.visualizer.dto.RetentionDto.JobLogResponse;
+import com.kafkaflow.visualizer.mapper.RetentionDtoMapper;
+import com.kafkaflow.visualizer.model.RetentionJobLog.JobType;
 import com.kafkaflow.visualizer.repository.RetentionJobLogRepository;
+import com.kafkaflow.visualizer.service.retention.RetentionArchiveService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.Optional;
-
-import static com.kafkaflow.visualizer.dto.RetentionDto.formatBytes;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/retention/jobs")
@@ -21,53 +20,51 @@ import static com.kafkaflow.visualizer.dto.RetentionDto.formatBytes;
 public class RetentionJobController {
 
     private final RetentionJobLogRepository jobLogRepository;
+    private final RetentionArchiveService archiveService;
+    private final RetentionDtoMapper mapper;
 
     @GetMapping
-    public ResponseEntity<Page<JobLogResponse>> getJobLogs(
+    public ResponseEntity<ApiResponse<List<JobLogResponse>>> getRecentJobs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        Page<RetentionJobLog> logs = jobLogRepository.findAllByOrderByStartedAtDesc(
-                PageRequest.of(page, size));
-        return ResponseEntity.ok(logs.map(this::toJobLogResponse));
+        List<JobLogResponse> jobs = jobLogRepository.findAll(
+                        PageRequest.of(page, size, Sort.by("startedAt").descending())
+                ).stream()
+                .map(mapper::toJobLogResponse)
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success(jobs));
     }
 
-    @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getJobStats() {
-        LocalDateTime since = LocalDateTime.now().minusDays(7);
-        Map<String, Object> stats = jobLogRepository.getJobStatsSince(since);
+    @GetMapping("/type/{type}")
+    public ResponseEntity<ApiResponse<List<JobLogResponse>>> getJobsByType(
+            @PathVariable JobType type,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
 
-        Optional<RetentionJobLog> lastArchive = jobLogRepository
-                .findTopByJobTypeAndStatusOrderByStartedAtDesc(
-                        RetentionJobLog.JobType.ARCHIVE,
-                        RetentionJobLog.JobStatus.COMPLETED);
+        List<JobLogResponse> jobs = jobLogRepository.findByJobType(
+                        type, PageRequest.of(page, size, Sort.by("startedAt").descending())
+                ).stream()
+                .map(mapper::toJobLogResponse)
+                .toList();
 
-        stats.put("lastArchiveAt", lastArchive.map(RetentionJobLog::getCompletedAt).orElse(null));
-        stats.put("bytesFreedFormatted", formatBytes(
-                stats.get("totalBytesFreed") != null ?
-                        ((Number) stats.get("totalBytesFreed")).longValue() : 0L));
-
-        return ResponseEntity.ok(stats);
+        return ResponseEntity.ok(ApiResponse.success(jobs));
     }
 
-    // =========================================================================
-    // HELPER
-    // =========================================================================
+    @PostMapping("/run/archive")
+    public ResponseEntity<ApiResponse<JobLogResponse>> runArchiveJob() {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Archive job finished",
+                mapper.toJobLogResponse(archiveService.archiveOldMessages())
+        ));
+    }
 
-    private JobLogResponse toJobLogResponse(RetentionJobLog log) {
-        return JobLogResponse.builder()
-                .id(log.getId())
-                .jobType(log.getJobType().name())
-                .status(log.getStatus().name())
-                .messagesProcessed(log.getMessagesProcessed())
-                .messagesArchived(log.getMessagesArchived())
-                .messagesDeleted(log.getMessagesDeleted())
-                .bytesFreed(log.getBytesFreed())
-                .bytesFreedFormatted(formatBytes(log.getBytesFreed()))
-                .startedAt(log.getStartedAt())
-                .completedAt(log.getCompletedAt())
-                .durationMs(log.getDurationMs())
-                .errorMessage(log.getErrorMessage())
-                .build();
+    @PostMapping("/run/purge-archive")
+    public ResponseEntity<ApiResponse<JobLogResponse>> runPurgeArchiveJob() {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Purge job finished",
+                mapper.toJobLogResponse(archiveService.purgeExpiredArchives())
+        ));
     }
 }

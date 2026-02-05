@@ -6,12 +6,9 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import java.time.Duration;
 import java.util.Properties;
 
-/**
- * Configuration et constantes pour les consumers Kafka
- */
 public final class KafkaConsumerConfig {
 
-    private KafkaConsumerConfig() {} // Pas d'instanciation
+    private KafkaConsumerConfig() {}
 
     // ═══════════════════════════════════════════════════════════════════════
     // TIMING

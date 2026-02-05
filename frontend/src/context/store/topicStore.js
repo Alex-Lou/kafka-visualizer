@@ -126,6 +126,29 @@ export const useTopicStore = create((set, get) => ({
     }
   },
 
+  // Dans useTopicStore, ajoute après deleteTopic:
+
+  createTopic: async (connectionId, topicData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await topicApi.create(connectionId, topicData);
+      const newTopic = response.data || response;
+      
+      set(state => ({
+        topics: [...state.topics, newTopic],
+        isLoading: false
+      }));
+      
+      return newTopic;
+    } catch (error) {
+      const appError = normalizeError(error);
+      logError(appError);
+      set({ error: appError.message, isLoading: false });
+      throw appError;
+    }
+  },
+
+
   deleteTopics: async (ids) => {
     const results = { success: 0, failed: 0 };
     for (const id of ids) {

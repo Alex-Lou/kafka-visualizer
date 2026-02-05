@@ -24,13 +24,11 @@ public interface FlowDiagramRepository extends JpaRepository<FlowDiagram, Long> 
     @Query("SELECT f FROM FlowDiagram f LEFT JOIN FETCH f.connection ORDER BY f.updatedAt DESC")
     List<FlowDiagram> findAllWithConnection();
 
-    // ✅ NOUVEAU: Récupérer un flow avec sa connexion
     @Query("SELECT f FROM FlowDiagram f LEFT JOIN FETCH f.connection WHERE f.id = :id")
     Optional<FlowDiagram> findByIdWithConnection(@Param("id") Long id);
 
     List<FlowDiagram> findByConnectionIdAndLiveModeTrue(Long connectionId);
 
-    // ✅ NOUVEAU: Pour le KafkaConsumerManager
     @Query("SELECT f FROM FlowDiagram f LEFT JOIN FETCH f.connection WHERE f.connection.id = :connectionId AND f.liveMode = true")
     List<FlowDiagram> findByConnectionIdAndLiveModeTrueWithConnection(@Param("connectionId") Long connectionId);
 }

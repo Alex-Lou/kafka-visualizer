@@ -6,3 +6,5 @@ export { default as FlowPage } from './Flow';
 export { default as SettingsPage } from './SettingsPage';
 export { default as AnalyticsPage } from './AnalyticsPage';
 export { default as ArchivesPage } from './ArchivesPage';
+export { default as UsersPage } from './UsersPage';
+

@@ -14,23 +14,17 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Traitement des messages Kafka reçus
- */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class KafkaMessageProcessor {
 
-    private final KafkaTopicMessageService messageService;  // ← Changé
+    private final KafkaTopicMessageService messageService;
     private final WebSocketService webSocketService;
     private final ThroughputTracker throughputTracker;
     private final MetricsBroadcaster metricsBroadcaster;
     private final KafkaErrorHandler errorHandler;
 
-    /**
-     * Traite un batch de records et retourne le nombre d'erreurs
-     */
     public int processRecords(Long topicId, String topicName, ConsumerRecords<String, String> records) {
         int recordCount = records.count();
 
@@ -51,14 +45,11 @@ public class KafkaMessageProcessor {
         return errors;
     }
 
-    /**
-     * Traite un seul record - retourne true si succès
-     */
     private boolean processRecord(Long topicId, ConsumerRecord<String, String> record) {
         try {
             Map<String, String> headers = extractHeaders(record);
 
-            var messageResponse = messageService.saveMessage(  // ← Changé
+            var messageResponse = messageService.saveMessage(
                     topicId,
                     KafkaMessage.MessageDirection.INBOUND,
                     record.key(),

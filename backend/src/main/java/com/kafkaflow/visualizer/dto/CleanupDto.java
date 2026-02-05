@@ -5,19 +5,12 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * DTOs pour le service de nettoyage (Cleanup)
- * Gère les topics et connexions orphelins
- */
 public class CleanupDto {
 
     // ═══════════════════════════════════════════════════════════════════════
     // RESPONSE - Vue d'ensemble du cleanup
     // ═══════════════════════════════════════════════════════════════════════
 
-    /**
-     * Réponse complète avec tous les éléments orphelins détectés
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -34,9 +27,6 @@ public class CleanupDto {
     // ORPHAN CONNECTION
     // ═══════════════════════════════════════════════════════════════════════
 
-    /**
-     * Représentation d'une connexion orpheline
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -56,9 +46,6 @@ public class CleanupDto {
     // ORPHAN TOPIC
     // ═══════════════════════════════════════════════════════════════════════
 
-    /**
-     * Représentation d'un topic orphelin
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -78,9 +65,6 @@ public class CleanupDto {
     // REQUESTS
     // ═══════════════════════════════════════════════════════════════════════
 
-    /**
-     * Request pour supprimer des éléments sélectionnés
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -93,9 +77,6 @@ public class CleanupDto {
     // DELETE RESPONSE
     // ═══════════════════════════════════════════════════════════════════════
 
-    /**
-     * Résultat d'une opération de suppression
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

@@ -5,7 +5,7 @@ import { useConnectionStore, useUIStore } from '@context/store/index';
 
 export default function ConnectionForm({ connection, onClose }) {
   const { createConnection, updateConnection } = useConnectionStore();
-  const { addNotification } = useUIStore();
+  const { addToast, addNotification } = useUIStore();
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -30,27 +30,48 @@ export default function ConnectionForm({ connection, onClose }) {
     try {
       if (connection) {
         await updateConnection(connection.id, formData);
+        // 🎉 Toast pour feedback immédiat
+        addToast({
+          type: 'success',
+          title: 'Updated',
+          message: `${formData.name} saved`,
+        });
+        // 🔔 Notification dans l'historique
         addNotification({
           type: 'success',
           title: 'Connection Updated',
-          message: `${formData.name} has been updated`,
+          message: `"${formData.name}" configuration has been updated`,
         });
       } else {
         await createConnection(formData);
+        // 🎉 Toast pour feedback immédiat
+        addToast({
+          type: 'success',
+          title: 'Created',
+          message: `${formData.name} created successfully`,
+        });
+        // 🔔 Notification dans l'historique
         addNotification({
           type: 'success',
           title: 'Connection Created',
-          message: `${formData.name} has been created`,
+          message: `"${formData.name}" has been added to your connections`,
         });
       }
       onClose();
       // Reload page to refresh connections with correct IDs
       window.location.reload();
     } catch (error) {
-      addNotification({
+      // 🎉 Toast pour l'erreur
+      addToast({
         type: 'error',
         title: connection ? 'Update Failed' : 'Creation Failed',
         message: error.message || 'An error occurred',
+      });
+      // 🔔 Notification d'erreur dans l'historique
+      addNotification({
+        type: 'error',
+        title: connection ? 'Update Failed' : 'Creation Failed',
+        message: error.message || 'An error occurred while saving the connection',
       });
     } finally {
       setLoading(false);

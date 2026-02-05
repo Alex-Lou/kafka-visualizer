@@ -1,126 +1,74 @@
 package com.kafkaflow.visualizer.controller.retention;
 
-import com.kafkaflow.visualizer.dto.RetentionDto.*;
-import com.kafkaflow.visualizer.exception.ResourceNotFoundException;
-import com.kafkaflow.visualizer.model.*;
-import com.kafkaflow.visualizer.repository.*;
+import com.kafkaflow.visualizer.dto.KafkaDto.ApiResponse;
+import com.kafkaflow.visualizer.dto.RetentionDto.GlobalStorageResponse;
+import com.kafkaflow.visualizer.dto.RetentionDto.PurgeRequest;
+import com.kafkaflow.visualizer.dto.RetentionDto.StorageUsageResponse;
+import com.kafkaflow.visualizer.service.retention.RetentionManualService;
+import com.kafkaflow.visualizer.service.retention.RetentionStorageService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.util.*;
-
-import static com.kafkaflow.visualizer.dto.RetentionDto.formatBytes;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/retention/storage")
 @RequiredArgsConstructor
-@Slf4j
 public class RetentionStorageController {
 
-    private final KafkaTopicRepository topicRepository;
-    private final KafkaMessageRepository messageRepository;
-    private final KafkaMessageArchiveRepository archiveRepository;
-    private final RetentionPolicyRepository policyRepository;
-    private final RetentionJobLogRepository jobLogRepository;
+    private final RetentionStorageService storageService;
+    private final RetentionManualService manualService;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LECTURE (GET)
+    // ═══════════════════════════════════════════════════════════════════════
 
     @GetMapping
-    public ResponseEntity<GlobalStorageResponse> getGlobalStorage() {
-        List<KafkaTopic> topics = topicRepository.findAll();
-
-        long totalHotMessages = 0;
-        long totalHotSize = 0;
-        long totalArchiveMessages = 0;
-        long totalArchiveSize = 0;
-
-        List<StorageUsageResponse> topicUsages = new ArrayList<>();
-
-        for (KafkaTopic topic : topics) {
-            long hotCount = messageRepository.countByTopicId(topic.getId());
-            long archiveCount = archiveRepository.countByTopicId(topic.getId());
-            Long archiveSize = archiveRepository.getTotalSizeByTopicId(topic.getId());
-
-            totalHotMessages += hotCount;
-            totalArchiveMessages += archiveCount;
-            totalArchiveSize += archiveSize != null ? archiveSize : 0;
-
-            topicUsages.add(StorageUsageResponse.builder()
-                    .topicId(topic.getId())
-                    .topicName(topic.getName())
-                    .connectionId(topic.getConnection().getId())
-                    .connectionName(topic.getConnection().getName())
-                    .hotMessageCount(hotCount)
-                    .archiveMessageCount(archiveCount)
-                    .archiveSizeBytes(archiveSize != null ? archiveSize : 0)
-                    .archiveSizeFormatted(formatBytes(archiveSize != null ? archiveSize : 0))
-                    .totalMessageCount(hotCount + archiveCount)
-                    .build());
-        }
-
-        Optional<RetentionJobLog> lastCleanup = jobLogRepository
-                .findTopByJobTypeAndStatusOrderByStartedAtDesc(
-                        RetentionJobLog.JobType.ARCHIVE,
-                        RetentionJobLog.JobStatus.COMPLETED);
-
-        return ResponseEntity.ok(GlobalStorageResponse.builder()
-                .totalHotMessages(totalHotMessages)
-                .totalHotSizeBytes(totalHotSize)
-                .totalHotSizeFormatted(formatBytes(totalHotSize))
-                .totalArchiveMessages(totalArchiveMessages)
-                .totalArchiveSizeBytes(totalArchiveSize)
-                .totalArchiveSizeFormatted(formatBytes(totalArchiveSize))
-                .totalMessages(totalHotMessages + totalArchiveMessages)
-                .totalSizeBytes(totalHotSize + totalArchiveSize)
-                .totalSizeFormatted(formatBytes(totalHotSize + totalArchiveSize))
-                .lastCleanupAt(lastCleanup.map(RetentionJobLog::getCompletedAt).orElse(null))
-                .topicUsages(topicUsages)
-                .build());
+    public ResponseEntity<ApiResponse<GlobalStorageResponse>> getGlobalStorage() {
+        return ResponseEntity.ok(ApiResponse.success(storageService.getGlobalStorage()));
     }
 
     @GetMapping("/topic/{topicId}")
-    public ResponseEntity<StorageUsageResponse> getTopicStorage(@PathVariable Long topicId) {
-        KafkaTopic topic = topicRepository.findById(topicId)
-                .orElseThrow(() -> new ResourceNotFoundException("Topic", topicId));
+    public ResponseEntity<ApiResponse<StorageUsageResponse>> getTopicStorage(@PathVariable Long topicId) {
+        return ResponseEntity.ok(ApiResponse.success(storageService.getTopicStorage(topicId)));
+    }
 
-        long hotCount = messageRepository.countByTopicId(topicId);
-        long archiveCount = archiveRepository.countByTopicId(topicId);
-        Long archiveSize = archiveRepository.getTotalSizeByTopicId(topicId);
+    // ═══════════════════════════════════════════════════════════════════════
+    // ACTIONS (POST)
+    // ═══════════════════════════════════════════════════════════════════════
 
-        LocalDateTime oldestArchive = null;
-        LocalDateTime newestArchive = null;
+    @PostMapping("/topic/{topicId}/archive")
+    public ResponseEntity<ApiResponse<Integer>> manualArchive(@PathVariable Long topicId) {
+        int count = manualService.archiveTopicMessages(topicId);
+        return ResponseEntity.ok(ApiResponse.success("Archived " + count + " messages", count));
+    }
 
-        try {
-            Object archiveStatsRaw = archiveRepository.getArchiveStatsByTopicId(topicId);
+    @PostMapping("/topic/{topicId}/reset")
+    public ResponseEntity<ApiResponse<Integer>> resetTopic(
+            @PathVariable Long topicId,
+            @RequestParam(defaultValue = "false") boolean includeArchives) {
+        int count = manualService.resetTopic(topicId, includeArchives);
+        return ResponseEntity.ok(ApiResponse.success("Topic reset. Deleted " + count + " messages", count));
+    }
 
-            if (archiveStatsRaw instanceof Object[] statsArray && statsArray.length >= 6) {
-                oldestArchive = (LocalDateTime) statsArray[4];
-                newestArchive = (LocalDateTime) statsArray[5];
-            }
-        } catch (Exception e) {
-            log.warn("Failed to get archive stats for topic {}: {}", topicId, e.getMessage());
-        }
+    @PostMapping("/purge")
+    public ResponseEntity<ApiResponse<Integer>> purgeOldMessages(@RequestBody PurgeRequest request) {
+        int count = manualService.purgeMessagesOlderThan(request.getOlderThan(), request.isArchiveFirst());
+        return ResponseEntity.ok(ApiResponse.success("Purged " + count + " messages", count));
+    }
 
-        RetentionPolicy policy = policyRepository
-                .findEffectivePolicy(topicId, topic.getConnection().getId())
-                .orElse(null);
+    @PostMapping("/messages/bookmark")
+    public ResponseEntity<ApiResponse<Void>> bookmarkMessage(
+            @RequestParam Long messageId,
+            @RequestParam boolean isBookmarked) {
+        manualService.bookmarkMessage(messageId, isBookmarked);
+        return ResponseEntity.ok(ApiResponse.success("Message bookmark updated", null));
+    }
 
-        return ResponseEntity.ok(StorageUsageResponse.builder()
-                .topicId(topic.getId())
-                .topicName(topic.getName())
-                .connectionId(topic.getConnection().getId())
-                .connectionName(topic.getConnection().getName())
-                .hotMessageCount(hotCount)
-                .archiveMessageCount(archiveCount)
-                .archiveSizeBytes(archiveSize != null ? archiveSize : 0)
-                .archiveSizeFormatted(formatBytes(archiveSize != null ? archiveSize : 0))
-                .oldestArchive(oldestArchive)
-                .newestArchive(newestArchive)
-                .totalMessageCount(hotCount + archiveCount)
-                .effectivePolicyName(policy != null ? policy.getPolicyName() : "Default")
-                .hotRetentionHours(policy != null ? policy.getHotRetentionHours() : 168)
-                .archiveRetentionDays(policy != null ? policy.getArchiveRetentionDays() : 90)
-                .build());
+    @PostMapping("/messages/archive-selection")
+    public ResponseEntity<ApiResponse<Integer>> archiveSelection(@RequestBody List<Long> messageIds) {
+        int count = manualService.archiveSpecificMessages(messageIds);
+        return ResponseEntity.ok(ApiResponse.success("Archived " + count + " selected messages", count));
     }
 }

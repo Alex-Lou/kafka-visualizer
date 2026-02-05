@@ -2,7 +2,6 @@ package com.kafkaflow.visualizer.exception;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.kafkaflow.visualizer.dto.ErrorResponse;
-import com.kafkaflow.visualizer.service.kafka.KafkaErrorHandler;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -19,11 +18,9 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.time.LocalDateTime;
 
 @RestControllerAdvice
-@RequiredArgsConstructor  // ✅ Injection du KafkaErrorHandler
+@RequiredArgsConstructor
 @Slf4j
 public class GlobalExceptionHandler {
-
-    private final KafkaErrorHandler kafkaErrorHandler;  // ✅ Injecté
 
     // ═══════════════════════════════════════════════════════════════════════
     // CUSTOM APP EXCEPTIONS
@@ -47,38 +44,26 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), ex.getErrorCode().getCode(), HttpStatus.CONFLICT, request);
     }
 
-    // ✅ AMÉLIORÉ - Utilise KafkaErrorHandler pour messages propres
     @ExceptionHandler(KafkaConnectionException.class)
     public ResponseEntity<ErrorResponse> handleKafkaConnectionException(KafkaConnectionException ex, HttpServletRequest request) {
-        // ✅ Extraire message propre via KafkaErrorHandler
-        String cleanMessage = kafkaErrorHandler.extractCleanMessage(ex);
-        String errorType = kafkaErrorHandler.getErrorType(ex);
+        String cleanMessage = ErrorMessageSimplifier.simplifyKafkaError(ex);
 
-        // ✅ Log structuré
-        log.error("🔌 Kafka connection failed");
-        log.error("   └─ Error: {}", cleanMessage);
-        log.error("   └─ Type: {}", errorType);
+        log.error("🔌 Kafka connection failed: {}", cleanMessage);
 
-        // Stack trace en DEBUG seulement
         if (log.isDebugEnabled()) {
-            log.debug("   └─ Full error:", ex);
+            log.debug("   └─ Full Stack:", ex);
         }
 
-        return buildErrorResponse(
-                cleanMessage,  // ✅ Message user-friendly
-                ex.getErrorCode().getCode(),
-                HttpStatus.BAD_REQUEST,
-                request
-        );
+        return buildErrorResponse(cleanMessage, ex.getErrorCode().getCode(), HttpStatus.BAD_REQUEST, request);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // HIBERNATE / DATABASE EXCEPTIONS
+    // DATA ACCESS & DATABASE EXCEPTIONS
     // ═══════════════════════════════════════════════════════════════════════
 
     @ExceptionHandler(LazyInitializationException.class)
     public ResponseEntity<ErrorResponse> handleLazyInitException(LazyInitializationException ex, HttpServletRequest request) {
-        String entity = extractEntityFromLazyError(ex.getMessage());
+        String entity = ErrorMessageSimplifier.extractEntityFromLazyError(ex.getMessage());
         log.error("💾 DB Session closed - Entity: {} | Use JOIN FETCH or @Transactional", entity);
         return buildErrorResponse(
                 "Data loading error. Please retry.",
@@ -90,10 +75,36 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<ErrorResponse> handleDataAccessException(DataAccessException ex, HttpServletRequest request) {
-        log.error("💾 Database error: {}", simplifyDbError(ex.getMessage()));
+        log.error("💾 Database error: {}", ErrorMessageSimplifier.simplifyDbError(ex.getMessage()));
         return buildErrorResponse(
                 "Database error occurred",
                 "DB_ERROR",
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                request
+        );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // INTEGRATION & IO EXCEPTIONS (Mail, JSON)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @ExceptionHandler(MessagingException.class)
+    public ResponseEntity<ErrorResponse> handleMessagingException(MessagingException ex, HttpServletRequest request) {
+        log.error("📧 Email sending failed: {}", ErrorMessageSimplifier.simplify(ex));
+        return buildErrorResponse(
+                "Failed to send email",
+                "EMAIL_SEND_ERROR",
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                request
+        );
+    }
+
+    @ExceptionHandler(JsonProcessingException.class)
+    public ResponseEntity<ErrorResponse> handleJsonProcessingException(JsonProcessingException ex, HttpServletRequest request) {
+        log.error("📄 JSON conversion failed: {}", ErrorMessageSimplifier.simplify(ex));
+        return buildErrorResponse(
+                "Failed to generate JSON report",
+                "JSON_CONVERSION_ERROR",
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 request
         );
@@ -120,7 +131,7 @@ public class GlobalExceptionHandler {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 404 - Silencieux (pas de log pour les 404 normaux)
+    // GENERIC & CATCH-ALL
     // ═══════════════════════════════════════════════════════════════════════
 
     @ExceptionHandler(NoResourceFoundException.class)
@@ -128,13 +139,9 @@ public class GlobalExceptionHandler {
         return buildErrorResponse("Resource not found", "NOT_FOUND", HttpStatus.NOT_FOUND, request);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // CATCH-ALL (Dernière ligne de défense)
-    // ═══════════════════════════════════════════════════════════════════════
-
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, HttpServletRequest request) {
-        String simplifiedMessage = simplifyErrorMessage(ex);
+        String simplifiedMessage = ErrorMessageSimplifier.simplify(ex);
         log.error("❌ Unexpected [{}]: {}", ex.getClass().getSimpleName(), simplifiedMessage);
 
         if (log.isDebugEnabled()) {
@@ -150,7 +157,7 @@ public class GlobalExceptionHandler {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // RESPONSE BUILDER
+    // HELPER METHODS
     // ═══════════════════════════════════════════════════════════════════════
 
     private ResponseEntity<ErrorResponse> buildErrorResponse(String message, String errorCode, HttpStatus status, HttpServletRequest request) {
@@ -163,74 +170,5 @@ public class GlobalExceptionHandler {
                 .path(request.getRequestURI())
                 .build();
         return ResponseEntity.status(status).body(errorResponse);
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // HELPERS
-    // ═══════════════════════════════════════════════════════════════════════
-
-    private String simplifyErrorMessage(Exception ex) {
-        String message = ex.getMessage();
-        if (message == null) {
-            return ex.getClass().getSimpleName();
-        }
-
-        if (message.length() > 150) {
-            message = message.substring(0, 150) + "...";
-        }
-
-        message = message.replaceAll("could not execute statement.*", "DB statement failed");
-        message = message.replaceAll("org\\.hibernate\\..*Exception:", "");
-        message = message.replaceAll("org\\.springframework\\..*Exception:", "");
-
-        return message.trim();
-    }
-
-    private String extractEntityFromLazyError(String message) {
-        if (message == null) return "Unknown";
-
-        int start = message.lastIndexOf('.');
-        int end = message.indexOf('#');
-        if (start > 0 && end > start) {
-            return message.substring(start + 1, end);
-        }
-        return "Unknown entity";
-    }
-
-    private String simplifyDbError(String message) {
-        if (message == null) return "Unknown DB error";
-
-        if (message.contains("Connection refused")) return "Database connection refused";
-        if (message.contains("Duplicate entry")) return "Duplicate entry in database";
-        if (message.contains("foreign key constraint")) return "Related data still exists";
-        if (message.contains("Data too long")) return "Data exceeds field size limit";
-
-        return message.length() > 100 ? message.substring(0, 100) + "..." : message;
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-// MAIL EXCEPTIONS
-// ═══════════════════════════════════════════════════════════════════════
-
-    @ExceptionHandler(MessagingException.class)
-    public ResponseEntity<ErrorResponse> handleMessagingException(MessagingException ex, HttpServletRequest request) {
-        log.error("📧 Email sending failed: {}", ex.getMessage());
-        return buildErrorResponse(
-                "Failed to send email",
-                "EMAIL_SEND_ERROR",
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                request
-        );
-    }
-
-    @ExceptionHandler(JsonProcessingException.class)
-    public ResponseEntity<ErrorResponse> handleJsonProcessingException(JsonProcessingException ex, HttpServletRequest request) {
-        log.error("📄 JSON conversion failed: {}", ex.getMessage());
-        return buildErrorResponse(
-                "Failed to generate JSON report",
-                "JSON_CONVERSION_ERROR",
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                request
-        );
     }
 }

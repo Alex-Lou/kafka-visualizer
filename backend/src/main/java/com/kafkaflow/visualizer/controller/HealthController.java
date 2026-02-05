@@ -20,7 +20,6 @@ public class HealthController {
     public ResponseEntity<ApiResponse<HealthStatus>> getHealth() {
         HealthStatus health = healthService.getHealthStatus();
 
-        // Return 503 if system is DOWN
         if ("DOWN".equals(health.getStatus())) {
             return ResponseEntity.status(503).body(ApiResponse.success(health));
         }

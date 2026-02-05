@@ -3,10 +3,6 @@ package com.kafkaflow.visualizer.service.kafka;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-/**
- * 📋 Gestionnaire centralisé des logs Kafka
- * Logs structurés et propres pour toutes les opérations
- */
 @Component
 @Slf4j
 public class KafkaLogger {

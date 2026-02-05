@@ -8,7 +8,6 @@ import './constants/styles/flow-animations.css';
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter future={{
-      // Enable the v7 "future flags"
       v7_startTransition: true,
       v7_relativeSplatPath: true,
     }}>

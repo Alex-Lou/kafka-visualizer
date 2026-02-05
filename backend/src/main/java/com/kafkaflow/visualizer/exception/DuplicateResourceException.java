@@ -1,8 +1,5 @@
 package com.kafkaflow.visualizer.exception;
 
-/**
- * Ressource dupliquée (409 Conflict)
- */
 public class DuplicateResourceException extends AppException {
 
     public DuplicateResourceException(String message) {

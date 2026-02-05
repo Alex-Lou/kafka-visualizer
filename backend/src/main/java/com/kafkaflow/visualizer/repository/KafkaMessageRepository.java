@@ -93,10 +93,6 @@ public interface KafkaMessageRepository extends JpaRepository<KafkaMessage, Long
     @Query("DELETE FROM KafkaMessage m WHERE m.topic.id = :topicId")
     void deleteAllByTopicId(@Param("topicId") Long topicId);
 
-    // =========================================================================
-    // RETENTION SERVICES - Messages à archiver
-    // =========================================================================
-
     @Query("SELECT m FROM KafkaMessage m WHERE m.topic.id = :topicId " +
             "AND m.timestamp < :cutoff " +
             "AND (:includeBookmarked = true OR m.isBookmarked = false) " +

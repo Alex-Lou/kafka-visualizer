@@ -56,8 +56,6 @@ public class KafkaMessage {
 
     private LocalDateTime createdAt;
 
-    // ==================== NEW FIELDS FOR RETENTION ====================
-
     @Enumerated(EnumType.STRING)
     @Column(name = "message_type")
     @Builder.Default
@@ -75,8 +73,6 @@ public class KafkaMessage {
     @Builder.Default
     private Boolean isBookmarked = false;
 
-    // ==================================================================
-
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -89,21 +85,17 @@ public class KafkaMessage {
         if (messageType == null) {
             messageType = MessageType.NORMAL;
         }
-        // Calculate value size
         if (value != null && valueSize == null) {
             valueSize = value.length();
         }
-        // Detect content type
         if (contentType == null || "unknown".equals(contentType)) {
             contentType = detectContentType(value);
         }
-        // Auto-detect message type from content
         if (messageType == MessageType.NORMAL && value != null) {
             messageType = detectMessageType(value);
         }
     }
 
-    // Detect content type based on value
     private String detectContentType(String value) {
         if (value == null || value.isEmpty()) {
             return "empty";
@@ -121,25 +113,21 @@ public class KafkaMessage {
         return "text/plain";
     }
 
-    // Detect message type (error, warning, etc.)
     private MessageType detectMessageType(String value) {
         if (value == null) return MessageType.NORMAL;
         String lower = value.toLowerCase();
 
-        // Check for error indicators
         if (lower.contains("\"error\"") || lower.contains("\"exception\"") ||
                 lower.contains("\"stacktrace\"") || lower.contains("\"status\":500") ||
                 lower.contains("\"status\":\"error\"") || lower.contains("failed")) {
             return MessageType.ERROR;
         }
 
-        // Check for warning indicators
         if (lower.contains("\"warning\"") || lower.contains("\"warn\"") ||
                 lower.contains("\"status\":\"warning\"")) {
             return MessageType.WARNING;
         }
 
-        // Check for system messages
         if (lower.contains("\"type\":\"system\"") || lower.contains("heartbeat") ||
                 lower.contains("\"ping\"") || lower.contains("\"health\"")) {
             return MessageType.SYSTEM;
@@ -160,7 +148,6 @@ public class KafkaMessage {
         NORMAL, ERROR, WARNING, SYSTEM
     }
 
-    // Helper method to get headers as Map (for archive conversion)
     public java.util.Map<String, String> getHeadersAsMap() {
         if (headers == null || headers.isEmpty()) {
             return null;

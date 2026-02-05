@@ -4,9 +4,6 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
-/**
- * Codes d'erreur centralisés avec leur statut HTTP et message par défaut
- */
 @Getter
 @RequiredArgsConstructor
 public enum ErrorCode {

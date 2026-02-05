@@ -3,12 +3,9 @@ package com.kafkaflow.visualizer.exception;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-/**
- * Utilitaire pour simplifier les messages d'erreur (logs et API)
- */
 public final class ErrorMessageSimplifier {
 
-    private ErrorMessageSimplifier() {} // Pas d'instanciation
+    private ErrorMessageSimplifier() {}
 
     private static final int MAX_LENGTH = 150;
 
@@ -43,9 +40,6 @@ public final class ErrorMessageSimplifier {
     // PUBLIC METHODS
     // ═══════════════════════════════════════════════════════════════════════
 
-    /**
-     * Simplifie un message d'erreur générique
-     */
     public static String simplify(Exception e) {
         if (e == null) return "Unknown error";
 
@@ -54,23 +48,16 @@ public final class ErrorMessageSimplifier {
             return e.getClass().getSimpleName();
         }
 
-        // Nettoyer les préfixes de packages Java
         message = PACKAGE_PREFIX.matcher(message).replaceAll("$1");
 
         return truncate(message);
     }
 
-    /**
-     * Simplifie un message d'erreur générique (String)
-     */
     public static String simplify(String message) {
         if (message == null) return "Unknown error";
         return truncate(PACKAGE_PREFIX.matcher(message).replaceAll("$1"));
     }
 
-    /**
-     * Simplifie une erreur de base de données
-     */
     public static String simplifyDbError(String message) {
         if (message == null) return "Unknown database error";
 
@@ -83,9 +70,6 @@ public final class ErrorMessageSimplifier {
         return truncate(message);
     }
 
-    /**
-     * Simplifie une erreur Kafka
-     */
     public static String simplifyKafkaError(String message) {
         if (message == null) return "Unknown Kafka error";
 
@@ -98,17 +82,11 @@ public final class ErrorMessageSimplifier {
         return truncate(message);
     }
 
-    /**
-     * Simplifie une erreur Kafka (Exception)
-     */
     public static String simplifyKafkaError(Exception e) {
         if (e == null) return "Unknown Kafka error";
         return simplifyKafkaError(e.getMessage());
     }
 
-    /**
-     * Extrait le nom de l'entité d'une LazyInitializationException
-     */
     public static String extractEntityFromLazyError(String message) {
         if (message == null) return "Unknown";
 
@@ -122,9 +100,6 @@ public final class ErrorMessageSimplifier {
         return "Unknown entity";
     }
 
-    /**
-     * Tronque un message s'il est trop long
-     */
     public static String truncate(String message) {
         if (message == null) return null;
         message = message.trim();
@@ -132,9 +107,6 @@ public final class ErrorMessageSimplifier {
         return message.substring(0, MAX_LENGTH) + "...";
     }
 
-    /**
-     * Tronque un message avec une longueur custom
-     */
     public static String truncate(String message, int maxLength) {
         if (message == null) return null;
         message = message.trim();

@@ -21,9 +21,6 @@ import java.util.stream.Collectors;
 
 import static com.kafkaflow.visualizer.service.kafka.KafkaConsumerConfig.Log;
 
-/**
- * Gestionnaire principal des consumers Kafka
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -48,7 +45,7 @@ public class KafkaConsumerManager {
     public void init() {
         log.info(Log.MANAGER_INIT);
         startMonitoredTopics();
-        updateConsumerStatusCache(); // Initial sync
+        updateConsumerStatusCache();
     }
 
     @PreDestroy
@@ -74,54 +71,37 @@ public class KafkaConsumerManager {
 
         Set<Long> monitoredIds = getMonitoredTopicIds();
 
-        // Démarrer les nouveaux
         topicRepository.findByMonitoredTrueWithConnection().stream()
                 .filter(topic -> !activeTasks.containsKey(topic.getId()))
                 .forEach(this::startConsumer);
 
-        // Arrêter ceux qui ne sont plus monitorés
         activeTasks.keySet().stream()
                 .filter(id -> !monitoredIds.contains(id))
                 .toList()
                 .forEach(this::stopConsumer);
 
-        // Mettre à jour le cache
         updateConsumerStatusCache();
     }
 
-    /**
-     * Broadcast des métriques par topic (toutes les 3 secondes)
-     */
     @Scheduled(fixedDelay = 3000)
     public void broadcastTopicMetrics() {
         if (!running.get()) return;
         activeTasks.keySet().forEach(metricsBroadcaster::broadcastTopicMetrics);
     }
 
-    /**
-     * Broadcast des métriques temps réel globales (toutes les secondes)
-     * Plus fréquent pour un dashboard réactif
-     */
     @Scheduled(fixedDelay = 1000)
     public void broadcastRealTimeMetrics() {
         if (!running.get()) return;
         metricsBroadcaster.broadcastRealTimeMetrics();
     }
 
-    /**
-     * Broadcast des stats complètes du dashboard (toutes les 5 secondes)
-     * Moins fréquent car inclut des requêtes DB
-     */
     @Scheduled(fixedDelay = 5000)
     public void broadcastDashboardStats() {
         if (!running.get()) return;
-        updateConsumerStatusCache(); // Refresh avant broadcast
+        updateConsumerStatusCache();
         metricsBroadcaster.broadcastDashboardMetrics();
     }
 
-    /**
-     * Nettoyage périodique des timestamps expirés (toutes les 30 secondes)
-     */
     @Scheduled(fixedDelay = 30000)
     public void cleanupThroughputData() {
         if (!running.get()) return;
@@ -191,7 +171,7 @@ public class KafkaConsumerManager {
             consumerThreads.put(topic.getId(), thread);
 
             log.info(Log.CONSUMER_STARTED, topic.getName());
-            updateConsumerStatusCache(); // Update cache after start
+            updateConsumerStatusCache();
             return true;
 
         } catch (Exception e) {
@@ -214,7 +194,7 @@ public class KafkaConsumerManager {
         }
 
         log.debug(Log.CONSUMER_STOPPED, topicId);
-        updateConsumerStatusCache(); // Update cache after stop
+        updateConsumerStatusCache();
     }
 
     private KafkaConsumer<String, String> createConsumer(KafkaConnection connection, KafkaTopic topic) {
@@ -261,10 +241,6 @@ public class KafkaConsumerManager {
                 .collect(Collectors.toSet());
     }
 
-    /**
-     * Met à jour le cache des consumers dans MetricsBroadcaster
-     * Évite la dépendance circulaire en passant les données par push
-     */
     private void updateConsumerStatusCache() {
         metricsBroadcaster.updateConsumerStatus(getActiveConsumerCount(), getConsumerStatus());
     }

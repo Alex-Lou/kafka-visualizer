@@ -15,12 +15,15 @@ import {
 } from 'lucide-react';
 import { Button, Badge } from '@components/common';
 import { STATUS, STATUS_COLORS } from '@components/flow/constants';
-import { useTopicStore } from '@context/store';
+import { useTopicStore, useUIStore } from '@context/store';
 import * as styles from '@constants/styles/flow/topicControlPanel';
 
 export function TopicControlPanel({ node, onClose, onUpdate, onDelete, onToggleMonitor }) {
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(node.data.label || '');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  const { addToast, addNotification } = useUIStore();
   
   // Se connecter directement au topicStore pour les métriques temps réel
   const topicFromStore = useTopicStore(state => 
@@ -41,24 +44,62 @@ export function TopicControlPanel({ node, onClose, onUpdate, onDelete, onToggleM
   const handleSave = () => {
     onUpdate(node.id, { label });
     setIsEditing(false);
+    // 🎉 Toast pour feedback
+    addToast({
+      type: 'success',
+      title: 'Updated',
+      message: 'Topic label updated',
+    });
   };
 
   const handleToggleMonitor = async () => {
     try {
       await onToggleMonitor(node.data.topicId);
+      // 🎉 Toast pour feedback immédiat
+      addToast({
+        type: 'success',
+        title: node.data.monitored ? 'Monitoring Disabled' : 'Monitoring Enabled',
+        message: node.data.monitored ? 'Stopped tracking this topic' : 'Now tracking this topic',
+      });
     } catch (error) {
       console.error('Failed to toggle monitor:', error);
+      addToast({
+        type: 'error',
+        title: 'Update Failed',
+        message: 'Failed to toggle monitoring',
+      });
     }
   };
 
   const handleDelete = () => {
-    if (confirm(`Delete topic "${node.data.label}"?`)) {
-      onDelete(node.id);
+    if (!showDeleteConfirm) {
+      setShowDeleteConfirm(true);
+      return;
     }
+    
+    onDelete(node.id);
+    // 🎉 Toast pour feedback immédiat
+    addToast({
+      type: 'success',
+      title: 'Removed',
+      message: 'Topic removed from flow',
+    });
+    // 🔔 Notification dans l'historique
+    addNotification({
+      type: 'info',
+      title: 'Topic Removed from Flow',
+      message: `"${node.data.label}" removed from flow visualization`,
+    });
+    onClose();
   };
 
   const handleRetry = () => {
     // TODO: Implement retry logic
+    addToast({
+      type: 'info',
+      title: 'Retrying',
+      message: 'Attempting to reconnect...',
+    });
   };
 
   // Derived state
@@ -363,15 +404,42 @@ export function TopicControlPanel({ node, onClose, onUpdate, onDelete, onToggleM
           {/* DELETE BUTTON */}
           {/* ══════════════════════════════════════════════════════════════════ */}
           <div className={styles.DELETE_SECTION}>
-            <Button
-              variant="danger"
-              size="sm"
-              icon={Trash2}
-              onClick={handleDelete}
-              className={styles.DELETE_BUTTON}
-            >
-              Delete from Flow
-            </Button>
+            {showDeleteConfirm ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Remove "{node.data.label}" from flow view?
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    icon={Trash2}
+                    onClick={handleDelete}
+                    className="flex-1"
+                  >
+                    Confirm
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                variant="danger"
+                size="sm"
+                icon={Trash2}
+                onClick={() => setShowDeleteConfirm(true)}
+                className={styles.DELETE_BUTTON}
+              >
+                Delete from Flow
+              </Button>
+            )}
           </div>
         </div>
       </div>

@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react';
-import { MessageSquare, Search, Filter, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Trash2, Server, XCircle, Settings } from 'lucide-react';
+import { MessageSquare, Search, Filter, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Trash2, Server, XCircle, Settings, Plus } from 'lucide-react';
 import { Header, Card, Button, Badge } from '@components/common';
 import { useTopicStore, useConnectionStore, useUIStore } from '@context/store/index';
 import { topicApi } from '@services/api';
 import { TOPICS as STYLES } from '@constants/styles/topics';
 import { LAYOUT } from '@constants/styles/layout';
 import TopicDetailPanel from '@components/topics/TopicDetailPanel';
+import CreateTopicModal from '@components/topics/CreateTopicModal';
 
 export default function TopicsPage() {
   const { topics, isLoading, fetchAllTopics, updateTopic } = useTopicStore();
   const { connections, fetchConnections } = useConnectionStore();
-  const { wsConnected, addNotification } = useUIStore();
+  const { wsConnected, addToast, addNotification } = useUIStore();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMonitored, setFilterMonitored] = useState(false);
@@ -22,6 +23,9 @@ export default function TopicsPage() {
   
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [selectedTopicConnection, setSelectedTopicConnection] = useState(null);
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createModalConnectionId, setCreateModalConnectionId] = useState(null);
 
   useEffect(() => {
     fetchConnections();
@@ -82,7 +86,16 @@ export default function TopicsPage() {
 
   const handleTopicDelete = () => {
     fetchAllTopics();
-    addNotification({ type: 'success', title: 'Topic Deleted' });
+    addToast({
+      type: 'success', 
+      title: 'Deleted', 
+      message: 'Topic removed' 
+    });
+    addNotification({
+      type: 'warning', 
+      title: 'Topic Deleted',
+      message: 'Topic has been permanently deleted'
+    });
   };
 
   const handleCleanupOrphans = async () => {
@@ -96,7 +109,16 @@ export default function TopicsPage() {
       } catch (e) { console.error('Failed to delete topic:', topic.name, e); }
     }
     await fetchAllTopics();
-    addNotification({ type: 'success', title: 'Cleanup Complete', message: `Removed ${deletedCount} empty topics` });
+    addToast({
+      type: 'success', 
+      title: 'Cleanup Complete', 
+      message: `Removed ${deletedCount} empty topics` 
+    });
+    addNotification({
+      type: 'warning', 
+      title: 'Cleanup Performed', 
+      message: `${deletedCount} empty topics permanently deleted` 
+    });
     setShowCleanupModal(false);
     setCleanupLoading(false);
   };
@@ -126,7 +148,7 @@ export default function TopicsPage() {
       <main className={LAYOUT.PAGE_CONTENT}>
         <div className={STYLES.FILTERS_BAR}>
           <div className={STYLES.FILTERS_GRID}>
-            <div className={`${STYLES.SEARCH_WRAPPER} flex-1 min-w-[200px]`}>
+            <div className={STYLES.SEARCH_WRAPPER}>
               <Search className={STYLES.SEARCH_ICON} />
               <input type="text" placeholder="Search topics..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className={STYLES.SEARCH_INPUT} />
             </div>
@@ -162,19 +184,33 @@ export default function TopicsPage() {
             const activeCount = connTopics.filter(t => (t.messageCount || 0) > 0).length;
             return (
               <Card key={connId} className={STYLES.CONNECTION_CARD}>
-                <button onClick={() => toggleConnection(Number(connId))} className={STYLES.CONNECTION_HEADER}>
-                  <div className={STYLES.CONNECTION_HEADER_LEFT}>
-                    {isExpanded ? <ChevronDown className={STYLES.CONNECTION_CHEVRON} /> : <ChevronRight className={STYLES.CONNECTION_CHEVRON} />}
-                    <div className="text-left">
-                      <h3 className={STYLES.CONNECTION_TITLE}>{connection.name}</h3>
-                      <p className={STYLES.CONNECTION_SUBTITLE}>{connection.bootstrapServers}</p>
+                <div className="flex items-center justify-between p-6 border-b border-border">
+                  <button onClick={() => toggleConnection(Number(connId))} className="flex items-center gap-3 flex-1 text-left min-w-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {isExpanded ? <ChevronDown className={STYLES.CONNECTION_CHEVRON} /> : <ChevronRight className={STYLES.CONNECTION_CHEVRON} />}
+                      <div className="text-left min-w-0">
+                        <h3 className={STYLES.CONNECTION_TITLE}>{connection.name}</h3>
+                        <p className={STYLES.CONNECTION_SUBTITLE}>{connection.bootstrapServers}</p>
+                      </div>
+                    </div>
+                  </button>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <button
+                      onClick={() => {
+                        setCreateModalConnectionId(connection.id);
+                        setShowCreateModal(true);
+                      }}
+                      className="px-3 py-1.5 text-sm font-medium text-foreground bg-secondary hover:bg-secondary/80 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      New Topic
+                    </button>
+                    <div className={STYLES.CONNECTION_BADGES}>
+                      <Badge variant={connection.status === 'CONNECTED' ? 'success' : 'error'}>{connection.status}</Badge>
+                      <Badge variant="secondary">{activeCount} active / {connTopics.length}</Badge>
                     </div>
                   </div>
-                  <div className={STYLES.CONNECTION_BADGES}>
-                    <Badge variant={connection.status === 'CONNECTED' ? 'success' : 'error'}>{connection.status}</Badge>
-                    <Badge variant="secondary">{activeCount} active / {connTopics.length}</Badge>
-                  </div>
-                </button>
+                </div>
                 {isExpanded && (
                   <div className="p-6">
                     {connTopics.length === 0 ? (
@@ -253,6 +289,20 @@ export default function TopicsPage() {
       </main>
 
       {selectedTopic && <TopicDetailPanel topic={selectedTopic} connection={selectedTopicConnection} onClose={handleClosePanel} onUpdate={fetchAllTopics} onDelete={handleTopicDelete} />}
+      
+      {showCreateModal && (
+        <CreateTopicModal
+          connectionId={createModalConnectionId}
+          connectionName={connections.find(c => c.id === createModalConnectionId)?.name}
+          onClose={() => {
+            setShowCreateModal(false);
+            setCreateModalConnectionId(null);
+          }}
+          onSuccess={() => {
+            fetchAllTopics();
+          }}
+        />
+      )}
     </>
   );
 }
