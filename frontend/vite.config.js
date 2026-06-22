@@ -4,6 +4,11 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  // En build de production : retire console.* et debugger (évite de fuiter
+  // messages Kafka / emails dans la console du navigateur). Le dev les garde.
+  esbuild: {
+    drop: ['console', 'debugger'],
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

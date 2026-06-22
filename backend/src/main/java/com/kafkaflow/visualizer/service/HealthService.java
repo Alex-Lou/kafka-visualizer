@@ -107,22 +107,20 @@ public class HealthService {
                     ? "No active Kafka connections"
                     : "No Kafka connections configured";
 
+            // On n'expose que des compteurs agrégés (pas les noms de connexions = topologie interne).
             return ComponentHealth.builder()
                     .status(status)
                     .message(message)
                     .details(Map.of(
                             "totalConnections", totalConnections,
-                            "activeConnections", activeConnections,
-                            "connectionNames", connectionRepository.findAllOrdered().stream()
-                                    .map(KafkaConnection::getName)
-                                    .toList()
+                            "activeConnections", activeConnections
                     ))
                     .build();
         } catch (Exception e) {
-            log.error("Kafka health check failed", e);
+            log.error("Kafka health check failed", e); // détail loggé côté serveur uniquement
             return ComponentHealth.builder()
                     .status("DOWN")
-                    .message("Kafka health check failed: " + e.getMessage())
+                    .message("Kafka health check failed")
                     .build();
         }
     }
