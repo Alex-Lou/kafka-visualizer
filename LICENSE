@@ -1,42 +1,61 @@
-Voici la version anglaise de ta licence Yucast :
+Yucast — Proprietary Software License
+Copyright (c) 2026 Cyber Wuruhi. All rights reserved.
 
-Yucast Dual License
+================================================================================
+ALL RIGHTS RESERVED — NO USE WITHOUT EXPLICIT WRITTEN PERMISSION
+================================================================================
 
-Copyright (c) 2025-2026 Ilya Alexeev
+1. DEFINITIONS
+   "Software" means the Yucast application, including its source code, object
+   code, assets, designs, documentation, and any other files contained in this
+   repository, in whole or in part.
+   "Owner" means the copyright holder named above.
+   "You" means any individual or entity that accesses the Software.
 
-Free Usage License (Core Version)
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to use the Software for non-commercial purposes only, subject to the following conditions:
+2. OWNERSHIP
+   The Software is the exclusive property of the Owner and is protected by
+   copyright and other intellectual property laws and treaties. The Owner
+   retains all right, title, and interest in and to the Software.
 
-Permissions
-Use the Software for personal or educational purposes
+3. NO LICENSE GRANTED BY DEFAULT
+   No right or license, express or implied, is granted to You by the mere
+   availability of this repository or by your access to it. Absent the Owner's
+   prior, explicit, written permission, You may NOT:
+     (a) use, run, execute, deploy, host, or operate the Software;
+     (b) copy, reproduce, store, or cache the Software;
+     (c) modify, adapt, translate, or create derivative works of the Software;
+     (d) distribute, publish, share, sublicense, lease, rent, or transfer the
+         Software to any third party;
+     (e) sell, resell, offer for sale, or otherwise commercialize the Software
+         or any part of it;
+     (f) reverse engineer, decompile, or disassemble the Software, except to
+         the extent this restriction is expressly prohibited by applicable law.
 
-Modify the Software for your own needs
+4. PERMITTED USE IS REQUESTED USE ONLY
+   Any use of the Software is permitted solely to the extent that it has been
+   expressly requested and authorized in writing by the Owner, and only within
+   the precise scope of that authorization. Any use beyond that scope — and any
+   use, reproduction, or sale that was not requested and authorized — is
+   strictly prohibited.
 
-Study the source code
+5. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
 
-Restrictions
-PROHIBITED: Commercial use, sale, or exploitation of the Software for profit
+6. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL THE OWNER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING
+   FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
 
-PROHIBITED: Reproduction, redistribution, or publication of the source code (modified or unmodified)
+7. TERMINATION
+   Any permission the Owner may grant is revocable at any time and for any
+   reason. Upon revocation, or upon any breach of these terms, You must
+   immediately cease all use of the Software and destroy all copies in your
+   possession or control.
 
-PROHIBITED: Creation of derivative works based on this Software
+8. CONTACT
+   For permission requests, contact the Owner at: alex.guennad@gmail.com
 
-PROHIBITED: Removal or modification of copyright notices
-
-Commercial Usage License (Premium Version)
-Premium features and commercial use of the Software require the acquisition of a commercial license or a paid subscription from the author.
-
-Premium Features Access Conditions
-A valid commercial license is MANDATORY
-
-Use without a license constitutes copyright infringement
-
-Access to premium features without authorization is strictly prohibited
-
-To obtain a commercial license, contact: alex.guennad@gmail.com
-
-Disclaimer
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
- TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+Unauthorized use, reproduction, distribution, or sale of this Software is
+strictly prohibited and may result in civil and criminal liability.
