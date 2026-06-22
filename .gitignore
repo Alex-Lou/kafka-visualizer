@@ -141,6 +141,8 @@ application-local.properties
 application-prod.yml
 application-prod.properties
 *.local.yml
+# Profil dev = config locale avec secrets (ne pas committer). Modele : application-dev.yml.example
+application-dev.yml
 
 # Test & Coverage
 coverage/
