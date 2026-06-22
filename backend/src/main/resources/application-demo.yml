@@ -43,7 +43,8 @@ server:
   port: 8080
 
 cors:
-  allowed-origins: "*"
+  # Origines explicites (jamais "*" avec allow-credentials=true)
+  allowed-origins: http://localhost:3000,http://localhost:5173
 
 app:
   jwt-secret: demo-secret-key-for-presentation-only-not-secure
