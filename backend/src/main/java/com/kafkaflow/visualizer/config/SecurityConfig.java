@@ -1,19 +1,32 @@
 package com.kafkaflow.visualizer.config;
 
+import com.kafkaflow.visualizer.security.JwtAccessDeniedHandler;
+import com.kafkaflow.visualizer.security.JwtAuthEntryPoint;
+import com.kafkaflow.visualizer.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity   // active @PreAuthorize (autorisation par role, lot suivant)
+@RequiredArgsConstructor
 public class SecurityConfig {
 
-    // C'est ce Bean qui manquait et causait l'erreur
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthEntryPoint jwtAuthEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -22,13 +35,31 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable) // Désactive CSRF pour simplifier les API calls
-                .cors(cors -> {}) // Active la config CORS définie ailleurs
+                // API stateless avec JWT Bearer : pas de session, CSRF non applicable
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> {})
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Pour l'instant, on laisse tout ouvert pour ne pas bloquer ton dev
-                        // On sécurisera les routes plus tard quand le login sera prêt
-                        .requestMatchers("/**").permitAll()
-                );
+                        // Public : login + health + handshake WebSocket (auth WS au CONNECT STOMP)
+                        .requestMatchers("/api/auth/login", "/actuator/health", "/ws/**").permitAll()
+                        // Administration : gestion des comptes + nettoyage = OWNER
+                        .requestMatchers("/api/users/**", "/api/cleanup/**").hasRole("OWNER")
+                        // Toute suppression / modification = OWNER (destructif ou structurel)
+                        .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("OWNER")
+                        .requestMatchers(HttpMethod.PUT, "/api/**").hasRole("OWNER")
+                        // Créations/actions structurelles ou destructrices (POST) = OWNER
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/connections", "/api/connections/test-error",
+                                "/api/topics/connection/**",
+                                "/api/retention/**"
+                        ).hasRole("OWNER")
+                        // Reste : tout utilisateur authentifié (lectures, rapports, flows...)
+                        .anyRequest().authenticated()
+                )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(jwtAuthEntryPoint)   // 401 : non authentifié
+                        .accessDeniedHandler(jwtAccessDeniedHandler))  // 403 : rôle insuffisant
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
