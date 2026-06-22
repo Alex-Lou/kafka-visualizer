@@ -115,6 +115,12 @@ public class KafkaTopicService {
             );
 
             if (request.getConfigs() != null && !request.getConfigs().isEmpty()) {
+                // Valide le format des cles de config (defense-en-profondeur ; Kafka valide aussi).
+                request.getConfigs().keySet().forEach(k -> {
+                    if (k == null || !k.matches("^[a-zA-Z0-9._-]+$")) {
+                        throw new IllegalArgumentException("Cle de configuration topic invalide : " + k);
+                    }
+                });
                 newTopic.configs(request.getConfigs());
             }
 

@@ -45,6 +45,12 @@ public class OwnerSetupRunner implements CommandLineRunner {
             return;
         }
 
+        if (password.length() < 8) {
+            log.error("❌ Password trop court (minimum 8 caracteres). Compte OWNER non cree.");
+            shutdown();
+            return;
+        }
+
         try {
             if (userRepository.existsByUsername(username)) {
                 log.warn("⚠ User '{}' already exists. Skipping creation.", username);

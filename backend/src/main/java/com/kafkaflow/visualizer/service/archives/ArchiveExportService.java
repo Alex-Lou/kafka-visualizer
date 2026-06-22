@@ -169,6 +169,11 @@ public class ArchiveExportService {
 
     private String escapeCsv(String value) {
         if (value == null) return "";
+        // Anti formula-injection : une cellule commençant par = + - @ (ou tab/CR) peut être
+        // interprétée comme formule par Excel/Sheets -> on la neutralise avec un apostrophe.
+        if (!value.isEmpty() && "=+-@\t\r".indexOf(value.charAt(0)) >= 0) {
+            value = "'" + value;
+        }
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
