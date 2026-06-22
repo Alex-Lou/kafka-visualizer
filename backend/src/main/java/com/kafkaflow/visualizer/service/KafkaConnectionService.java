@@ -8,6 +8,7 @@ import com.kafkaflow.visualizer.model.KafkaConnection;
 import com.kafkaflow.visualizer.model.KafkaConnection.ConnectionStatus;
 import com.kafkaflow.visualizer.repository.KafkaConnectionRepository;
 import com.kafkaflow.visualizer.repository.KafkaTopicRepository;
+import com.kafkaflow.visualizer.security.KafkaAddressValidator;
 import com.kafkaflow.visualizer.service.kafka.KafkaLogger;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ public class KafkaConnectionService {
     private final KafkaConnectionRepository connectionRepository;
     private final KafkaTopicRepository topicRepository;
     private final KafkaLogger kafkaLogger;
+    private final KafkaAddressValidator kafkaAddressValidator;
     private final Map<Long, AdminClient> adminClients = new ConcurrentHashMap<>();
 
     @Transactional(readOnly = true)
@@ -47,6 +49,7 @@ public class KafkaConnectionService {
 
     @Transactional
     public ConnectionResponse createConnection(ConnectionRequest request) {
+        kafkaAddressValidator.validate(request.getBootstrapServers());
         if (connectionRepository.existsByName(request.getName())) {
             throw new DuplicateResourceException("Connection", "name", request.getName());
         }
@@ -60,6 +63,7 @@ public class KafkaConnectionService {
 
     @Transactional
     public ConnectionResponse updateConnection(Long id, ConnectionRequest request) {
+        kafkaAddressValidator.validate(request.getBootstrapServers());
         KafkaConnection connection = connectionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Connection", id));
 

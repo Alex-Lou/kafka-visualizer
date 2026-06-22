@@ -23,6 +23,9 @@ public class ArchiveSearchService {
 
     private final KafkaMessageArchiveRepository archiveRepository;
     private static final int MAX_PREVIEW_LENGTH = 200;
+    private static final java.util.Set<String> ALLOWED_SORT_FIELDS = java.util.Set.of(
+            "id", "originalId", "topicId", "topicName", "connectionId", "connectionName",
+            "partition", "offset", "originalTimestamp", "contentType");
     /**
      * Récupère la liste paginée et filtrée des archives
      */
@@ -85,7 +88,10 @@ public class ArchiveSearchService {
         int page = filter.getPage() > 0 ? filter.getPage() : 0;
         int size = filter.getSize() > 0 ? Math.min(filter.getSize(), 100) : 20;
 
-        String sortBy = filter.getSortBy() != null ? filter.getSortBy() : "originalTimestamp";
+        // Allow-list : empeche l'injection d'un nom de colonne arbitraire dans Sort.by(...)
+        String requestedSort = filter.getSortBy();
+        String sortBy = (requestedSort != null && ALLOWED_SORT_FIELDS.contains(requestedSort))
+                ? requestedSort : "originalTimestamp";
         Sort.Direction direction = "asc".equalsIgnoreCase(filter.getSortDirection())
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
