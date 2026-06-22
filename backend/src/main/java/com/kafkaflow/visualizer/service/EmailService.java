@@ -179,6 +179,10 @@ public class EmailService {
     private String escapeCsv(Object value) {
         if (value == null) return "";
         String stringValue = value.toString();
+        // Anti formula-injection (Excel/Sheets) : neutralise les cellules commençant par = + - @
+        if (!stringValue.isEmpty() && "=+-@\t\r".indexOf(stringValue.charAt(0)) >= 0) {
+            stringValue = "'" + stringValue;
+        }
         if (stringValue.contains(",") || stringValue.contains("\"") || stringValue.contains("\n")) {
             return "\"" + stringValue.replace("\"", "\"\"") + "\"";
         }
