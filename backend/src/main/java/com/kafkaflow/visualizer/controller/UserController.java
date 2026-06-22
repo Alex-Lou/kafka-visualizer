@@ -3,6 +3,7 @@ package com.kafkaflow.visualizer.controller;
 import com.kafkaflow.visualizer.dto.KafkaDto.ApiResponse;
 import com.kafkaflow.visualizer.dto.UserDto.*;
 import com.kafkaflow.visualizer.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +23,7 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<UserResponse>> createUser(@RequestBody CreateUserRequest request) {
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody CreateUserRequest request) {
         return ResponseEntity.ok(ApiResponse.success("User created successfully", userService.createUser(request)));
     }
 
