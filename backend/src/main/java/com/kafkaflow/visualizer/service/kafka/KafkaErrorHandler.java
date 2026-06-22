@@ -67,6 +67,7 @@ public class KafkaErrorHandler {
             return e.getClass().getSimpleName();
         }
 
+        message = redactSecrets(message);
         message = message.replaceAll("org\\.[a-z.]+\\.(\\w+Exception)", "$1");
 
         if (message.length() > 100) {
@@ -74,6 +75,14 @@ public class KafkaErrorHandler {
         }
 
         return message;
+    }
+
+    /** Masque les secrets (mots de passe JAAS/SASL) eventuellement presents dans un message logue. */
+    private String redactSecrets(String s) {
+        if (s == null) {
+            return null;
+        }
+        return s.replaceAll("(?i)(password\\s*=\\s*)(\"[^\"]*\"|'[^']*'|\\S+)", "$1***");
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -141,6 +150,7 @@ public class KafkaErrorHandler {
             return e.getClass().getSimpleName();
         }
 
+        msg = redactSecrets(msg);
         msg = msg.replaceAll("org\\.apache\\.kafka\\.[a-z.]+\\.(\\w+)", "$1");
 
         if (msg.length() > 120) {

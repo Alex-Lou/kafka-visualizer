@@ -1,5 +1,6 @@
 package com.kafkaflow.visualizer.model;
 
+import com.kafkaflow.visualizer.security.SaslPasswordConverter;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -39,6 +40,7 @@ public class KafkaConnection {
 
     private String saslUsername;
 
+    @Convert(converter = SaslPasswordConverter.class)
     @Column(length = 500)
     private String saslPassword;
 
