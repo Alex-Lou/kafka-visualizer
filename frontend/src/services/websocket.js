@@ -1,5 +1,6 @@
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { getAuthToken } from './authToken';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:8080/ws';
 
@@ -19,12 +20,15 @@ class WebSocketService {
     }
 
     return new Promise((resolve, reject) => {
+      const token = getAuthToken();
       this.client = new Client({
         webSocketFactory: () => new SockJS(WS_URL),
+        // Token transmis dans le frame STOMP CONNECT (validé côté serveur au lot suivant)
+        connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
         reconnectDelay: 5000,
         heartbeatIncoming: 4000,
         heartbeatOutgoing: 4000,
-        
+
         onConnect: () => {
           this.isConnected = true;
           this.reconnectAttempts = 0;

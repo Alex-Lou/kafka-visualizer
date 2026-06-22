@@ -1,6 +1,11 @@
 import axios from 'axios';
+import { getAuthToken } from './authToken';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
+// Handler appelé sur 401 (token absent/expiré) — branché par le store d'auth.
+let onUnauthorized = null;
+export const setUnauthorizedHandler = (fn) => { onUnauthorized = fn; };
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -12,7 +17,11 @@ export const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Add any auth tokens here if needed
+    const token = getAuthToken();
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
@@ -26,11 +35,26 @@ api.interceptors.response.use(
     return response.data;
   },
   (error) => {
+    if (error.response?.status === 401 && typeof onUnauthorized === 'function') {
+      onUnauthorized();
+    }
     const message = error.response?.data?.message || error.message || 'An error occurred';
-    console.error('API Error:', message);
+    if (import.meta.env.DEV) console.error('API Error:', message);
     return Promise.reject(new Error(message));
   }
 );
+
+// Auth endpoints
+export const authApi = {
+  login: (data) => api.post('/auth/login', data),
+  me: () => api.get('/auth/me'),
+};
+
+// Report endpoints (requête de messages pour rapport + envoi email)
+export const reportApi = {
+  queryMessages: (data) => api.post('/report-query/messages', data),
+  email: (data) => api.post('/report/email', data),
+};
 
 // Connection endpoints
 export const connectionApi = {

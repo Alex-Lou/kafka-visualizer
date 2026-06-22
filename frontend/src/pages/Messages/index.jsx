@@ -5,6 +5,7 @@ import { useMessageStore, useTopicStore, useRetentionStore, useUIStore } from '@
 import { LAYOUT } from '@constants/styles/layout';
 import wsService from '@services/websocket';
 import emailService from '@services/emailService';
+import { reportApi } from '@services/api';
 
 import MessageStatsBar from './MessageStatsBar';
 import MessageListPanel from './MessageListPanel';
@@ -241,15 +242,8 @@ export default function MessagesPage() {
         
       } else {
         // Messages depuis les topics sélectionnés
-        const response = await fetch('/api/report-query/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topicIds: formData.topicIds }),
-        });
-        
-        if (!response.ok) throw new Error('Failed to query messages for report.');
-        
-        const data = await response.json();
+        // Passe par l'instance axios `api` (intercepteur => token Bearer).
+        const data = await reportApi.queryMessages({ topicIds: formData.topicIds });
 
         // ✅ Gérer la structure ApiResponse
         if (Array.isArray(data)) {

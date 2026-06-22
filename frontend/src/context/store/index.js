@@ -1,3 +1,4 @@
+export * from './authStore';
 export * from './websocket';
 export * from './connectionStore';
 export * from './topicStore';

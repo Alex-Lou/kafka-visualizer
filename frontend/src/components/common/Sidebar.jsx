@@ -11,8 +11,9 @@ import {
   Zap,
   Archive,
   Users, // <--- AJOUT ICI
+  LogOut,
 } from 'lucide-react';
-import { useUIStore, useConnectionStore } from '@context/store/index';
+import { useUIStore, useConnectionStore, useAuthStore } from '@context/store/index';
 import { SIDEBAR } from '@constants/styles/sidebar';
 
 const navItems = [
@@ -33,6 +34,7 @@ export default function Sidebar() {
   const location = useLocation();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const { connections } = useConnectionStore();
+  const { user, logout } = useAuthStore();
   
   const activeConnections = connections.filter((c) => c.status === 'CONNECTED').length;
 
@@ -110,6 +112,15 @@ export default function Sidebar() {
             </span>
           )}
         </div>
+
+        <button
+          onClick={logout}
+          title={sidebarCollapsed ? 'Deconnexion' : undefined}
+          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm text-surface-500 hover:text-red-500 hover:bg-red-500/10 transition"
+        >
+          <LogOut className="w-4 h-4" />
+          {!sidebarCollapsed && <span>{user?.username ? `Deconnexion (${user.username})` : 'Deconnexion'}</span>}
+        </button>
       </div>
 
       {sidebarCollapsed && (

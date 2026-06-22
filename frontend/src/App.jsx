@@ -1,18 +1,27 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Sidebar, NotificationToast } from '@components/common';
-// J'ajoute UsersPage ici dans l'import
 import { DashboardPage, ConnectionsPage, TopicsPage, MessagesPage, FlowPage, SettingsPage, AnalyticsPage, ArchivesPage, UsersPage } from '@pages';
-import { useUIStore, useConnectionStore, useTopicStore, initializeWebSocket, subscribeToWsStatus } from '@context/store/index';
+import LoginPage from './pages/Login/LoginPage';
+import { useUIStore, useConnectionStore, useTopicStore, useAuthStore, initializeWebSocket, subscribeToWsStatus } from '@context/store/index';
 import { LAYOUT } from '@constants/styles/layout';
 
 export default function App() {
   const { sidebarCollapsed, setWsConnected } = useUIStore();
   const { fetchConnections } = useConnectionStore();
   const { fetchAllTopics } = useTopicStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [appReady, setAppReady] = useState(false);
 
+  // Au montage : si un token persiste (sessionStorage), on revalide la session
+  // pour survivre à un rafraîchissement de page sans repasser par le login.
   useEffect(() => {
+    useAuthStore.getState().init();
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
     const initApp = async () => {
       await fetchConnections();
       await initializeWebSocket();
@@ -29,7 +38,12 @@ export default function App() {
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [isAuthenticated]);
+
+  // Tant que l'utilisateur n'est pas connecté, on n'affiche que l'écran de login.
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
 
   return (
     <div className={LAYOUT.APP_SHELL}>

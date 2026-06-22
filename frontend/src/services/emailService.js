@@ -1,32 +1,20 @@
-// A service for handling email-related API calls.
+// Service pour les appels API liés à l'email.
+import { reportApi } from './api';
 
 /**
- * Sends an email report to the backend.
+ * Envoie un rapport par email au backend.
+ * Passe par l'instance axios `api` (intercepteur => Authorization: Bearer ...),
+ * et renvoie directement le corps JSON (response.data).
  *
- * @param {object} reportData - The data for the email report.
- * @param {string} reportData.recipient - The recipient's email address.
- * @param {string} reportData.subject - The email subject.
- * @param {string} reportData.body - The email body.
- * @param {Array} reportData.messages - The array of messages to include in the report.
- * @param {string} reportData.format - The format of the attachment ('json' or 'csv').
+ * @param {object} reportData - Données du rapport.
+ * @param {string} reportData.recipient - Email du destinataire.
+ * @param {string} reportData.subject - Sujet de l'email.
+ * @param {string} reportData.body - Corps de l'email.
+ * @param {Array}  reportData.messages - Messages à inclure dans le rapport.
+ * @param {string} reportData.format - Format de la pièce jointe ('json' ou 'csv').
  */
 export const sendReport = async (reportData) => {
-
-  const response = await fetch('/api/report/email', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(reportData),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error('Failed to send email report. Server responded with:', errorBody);
-    throw new Error('Failed to send email report.');
-  }
-
-  return response.json();
+  return reportApi.email(reportData);
 };
 
 const emailService = {
