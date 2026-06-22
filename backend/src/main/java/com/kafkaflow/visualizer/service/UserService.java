@@ -8,11 +8,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
+
+    private static final Set<String> ALLOWED_ROLES = Set.of("OWNER", "ADMIN", "VIEWER", "USER");
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -38,12 +41,27 @@ public class UserService {
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole() != null ? request.getRole() : "USER");
+        // Anti-escalade : on n'accepte qu'un role connu, sinon USER par defaut.
+        String requested = request.getRole() == null ? "USER" : request.getRole().trim().toUpperCase();
+        user.setRole(ALLOWED_ROLES.contains(requested) ? requested : "USER");
 
         return mapToResponse(userRepository.save(user));
     }
 
     public void deleteUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Garde-fou : ne jamais supprimer le dernier OWNER (verrouillage du compte).
+        if ("OWNER".equalsIgnoreCase(user.getRole())) {
+            long owners = userRepository.findAll().stream()
+                    .filter(u -> "OWNER".equalsIgnoreCase(u.getRole()))
+                    .count();
+            if (owners <= 1) {
+                throw new RuntimeException("Impossible de supprimer le dernier compte OWNER");
+            }
+        }
+
         userRepository.deleteById(id);
     }
 
